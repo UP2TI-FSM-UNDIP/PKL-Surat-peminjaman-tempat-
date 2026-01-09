@@ -1,0 +1,14 @@
+{
+  "name": "booking",
+  "module": "index.ts",
+  "baseUrl": ".",
+  "type": "module",
+  "private": true,
+  "peerDependencies": {
+    "typescript": "^5.5.3"
+  },
+  "workspaces": [
+    "booking-api",
+    "booking-webapp"
+  ]
+}

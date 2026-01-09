@@ -1,0 +1,6 @@
+[submodule "booking-api"]
+	path = booking-api
+	url = git@gitlab.fsm.internal:pkl/e-office/booking-api.git
+[submodule "booking-web"]
+	path = booking-web
+	url = git@gitlab.fsm.internal:pkl/e-office/booking-web.git
