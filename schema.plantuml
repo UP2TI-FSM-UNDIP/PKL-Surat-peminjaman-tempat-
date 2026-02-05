@@ -1,0 +1,144 @@
+@startuml
+
+!theme vibrant
+hide circle
+skinparam linetype ortho
+
+entity "users" {
+  + id: bigint
+  --
+  * name: varchar
+  * email: varchar <<unique>>
+  * password: varchar
+  * email_verified_at: timestamp <<nullable>>
+  * remember_token: varchar
+  * timestamps
+  --
+  # role_id: bigint <<FK>>
+  # unit_id: bigint <<FK>>
+}
+
+entity "roles" {
+  + id: bigint
+  --
+  * name: varchar
+  * slug: varchar <<unique>>
+  * timestamps
+}
+
+entity "units" {
+  + id: bigint
+  --
+  * name: varchar
+  * code: varchar <<unique, nullable>>
+  * category: varchar
+  * timestamps
+  --
+  # parent_id: bigint <<FK>>
+}
+
+entity "workflows" {
+  + id: bigint
+  --
+  * name: varchar
+  * description: text <<nullable>>
+  * applies_to_category: varchar
+  * timestamps
+}
+
+entity "workflow_steps" {
+  + id: bigint
+  --
+  * step_order: integer
+  * step_name: varchar
+  * action_type: enum
+  * target_role_slug: varchar
+  * scope_type: enum
+  * target_category_lookup: varchar <<nullable>>
+  * timestamps
+  --
+  # workflow_id: bigint <<FK>>
+}
+
+entity "documents" {
+  + id: bigint
+  --
+  * nomor_surat: varchar <<nullable, index>>
+  * title: varchar
+  * content: json <<nullable>>
+  * attachment_path: varchar <<nullable>>
+  * current_step_order: integer
+  * status: varchar <<index>>
+  * completed_at: timestamp <<nullable>>
+  * meta_data: json <<nullable>>
+  * timestamps
+  * deleted_at: timestamp <<nullable>>
+  --
+  # unit_id: bigint <<FK>>
+  # creator_id: bigint <<FK>>
+  # workflow_id: bigint <<FK>>
+  # current_holder_id: bigint <<FK>>
+}
+
+entity "document_logs" {
+  + id: bigint
+  --
+  * action: varchar
+  * note: text <<nullable>>
+  * step_snapshot: integer <<nullable>>
+  * data_snapshot: json <<nullable>>
+  * timestamps
+  --
+  # document_id: bigint <<FK>>
+  # user_id: bigint <<FK>>
+}
+
+entity "rooms" {
+  + id: bigint
+  --
+  * name: varchar
+  * code: varchar <<unique>>
+  * capacity: integer <<nullable>>
+  * facilities: json <<nullable>>
+  * status: enum
+  * description: text <<nullable>>
+  * images: json <<nullable>>
+  * timestamps
+  * deleted_at: timestamp <<nullable>>
+}
+
+entity "room_bookings" {
+  + id: bigint
+  --
+  * booking_date: date
+  * start_time: time
+  * end_time: time
+  * purpose: text
+  * status: enum <<index>>
+  * approved_at: timestamp <<nullable>>
+  * rejection_reason: text <<nullable>>
+  * special_requirements: text <<nullable>>
+  * expected_participants: integer <<nullable>>
+  * timestamps
+  * deleted_at: timestamp <<nullable>>
+  --
+  # document_id: bigint <<FK>>
+  # room_id: bigint <<FK>>
+  # booked_by: bigint <<FK>>
+  # approved_by: bigint <<FK>>
+}
+
+users }o--|| roles
+users }o--|| units
+units }o--o{ units
+workflows ||--o{ workflow_steps
+documents }o--|| units
+documents }o--|| users
+documents }o--|| workflows
+documents ||--o{ document_logs
+documents ||--o{ room_bookings
+users ||--o{ document_logs
+users ||--o{ room_bookings
+rooms ||--o{ room_bookings
+
+@enduml
