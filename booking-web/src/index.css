@@ -1,0 +1,253 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* Docx Preview Styles */
+.docx-wrapper {
+  padding: 30px;
+  background: white;
+  min-height: 100%;
+}
+
+.docx-wrapper section.docx {
+  background: white;
+  margin-bottom: 30px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 20mm;
+}
+
+.docx-wrapper table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.docx-wrapper table td,
+.docx-wrapper table th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.docx-wrapper img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* --- 1. Konfigurasi Varian Dark Mode --- */
+@custom-variant dark (&:is(.dark *));
+
+/* --- 2. Konfigurasi Tema --- */
+@theme inline {
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  /* Base Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Chart Colors */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Sidebar Colors */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* --- 3. Definisi Variabel Warna (FSM UNDIP Theme) --- */
+@layer base {
+  :root {
+    /* Global Settings */
+    --radius: 0.5rem;
+    /* Sedikit lebih kotak agar terlihat formal (akademik) */
+
+    /* --- LIGHT MODE (FSM UNDIP Standard) --- */
+
+    /* Background: Putih Bersih */
+    --background: oklch(1 0 0);
+    /* Foreground: Hitam Pekat agar kontras tinggi untuk bacaan */
+    --foreground: oklch(0.13 0.02 240);
+
+    /* Card: Putih */
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.13 0.02 240);
+
+    /* Popover: Putih */
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.13 0.02 240);
+
+    /* PRIMARY: FSM Blue Bright (#098cf2) -> converted to OKLCH */
+    --primary: oklch(0.65 0.18 245);
+    --primary-foreground: oklch(1 0 0);
+    /* Teks putih di atas biru */
+
+    /* SECONDARY: FSM Dark Teal (#003c49) -> converted to OKLCH */
+    /* Digunakan untuk elemen pendukung yang solid */
+    --secondary: oklch(0.35 0.06 230);
+    --secondary-foreground: oklch(0.98 0 0);
+
+    /* Muted: Abu-abu halus untuk background selingan */
+    --muted: oklch(0.96 0.01 240);
+    --muted-foreground: oklch(0.45 0.02 240);
+
+    /* Accent: Biru sangat muda untuk hover */
+    --accent: oklch(0.95 0.03 245);
+    --accent-foreground: oklch(0.35 0.06 230);
+
+    /* Destructive: Merah standar */
+    --destructive: oklch(0.58 0.25 27);
+    --destructive-foreground: oklch(0.98 0 0);
+
+    /* Border & Input: Abu-abu terang */
+    --border: oklch(0.88 0.01 240);
+    --input: oklch(0.88 0.01 240);
+
+    /* Ring: Menggunakan warna Primary tapi lebih transparan */
+    --ring: oklch(0.65 0.18 245 / 0.5);
+
+    /* Chart Colors (Tetap default atau disesuaikan nuansa biru) */
+    --chart-1: oklch(0.65 0.18 245);
+    /* Primary Blue */
+    --chart-2: oklch(0.35 0.06 230);
+    /* Dark Teal */
+    --chart-3: oklch(0.7 0.15 180);
+    /* Cyan */
+    --chart-4: oklch(0.6 0.15 60);
+    /* Orange (Warna sekunder Undip umum) */
+    --chart-5: oklch(0.6 0.15 300);
+    /* Purple */
+
+    /* SIDEBAR (Light Mode) */
+    /* Menggunakan Dark Teal FSM (#003c49) agar terlihat "Official" seperti Header website */
+    --sidebar: oklch(0.35 0.06 230);
+    --sidebar-foreground: oklch(0.98 0 0);
+    --sidebar-primary: oklch(0.65 0.18 245);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.4 0.06 230);
+    /* Sedikit lebih terang dari sidebar bg */
+    --sidebar-accent-foreground: oklch(0.98 0 0);
+    --sidebar-border: oklch(0.4 0.06 230);
+    --sidebar-ring: oklch(0.65 0.18 245);
+  }
+
+  /* --- DARK MODE VALUES --- */
+  .dark {
+    /* Background: Abu-abu gelap kebiruan (Slate 950) */
+    --background: oklch(0.12 0.02 240);
+    --foreground: oklch(0.98 0 0);
+
+    /* Card: Sedikit lebih terang dari background */
+    --card: oklch(0.15 0.03 240);
+    --card-foreground: oklch(0.98 0 0);
+
+    --popover: oklch(0.15 0.03 240);
+    --popover-foreground: oklch(0.98 0 0);
+
+    /* Primary: Biru FSM tapi sedikit lebih soft untuk dark mode */
+    --primary: oklch(0.65 0.18 245);
+    --primary-foreground: oklch(1 0 0);
+
+    /* Secondary: Teal yang lebih gelap lagi atau abu-abu */
+    --secondary: oklch(0.25 0.04 230);
+    --secondary-foreground: oklch(0.98 0 0);
+
+    --muted: oklch(0.2 0.03 240);
+    --muted-foreground: oklch(0.7 0.02 240);
+
+    --accent: oklch(0.2 0.04 240);
+    --accent-foreground: oklch(0.98 0 0);
+
+    --destructive: oklch(0.45 0.15 27);
+    --destructive-foreground: oklch(0.98 0 0);
+
+    --border: oklch(0.25 0.02 240);
+    --input: oklch(0.25 0.02 240);
+    --ring: oklch(0.55 0.15 245);
+
+    /* SIDEBAR (Dark Mode) */
+    /* Tetap gelap, menyatu dengan background dark mode */
+    --sidebar: oklch(0.1 0.02 240);
+    --sidebar-foreground: oklch(0.98 0 0);
+    --sidebar-primary: oklch(0.65 0.18 245);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.18 0.03 240);
+    --sidebar-accent-foreground: oklch(0.98 0 0);
+    --sidebar-border: oklch(0.2 0.02 240);
+    --sidebar-ring: oklch(0.65 0.18 245);
+  }
+
+  /* Global Reset Styles */
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* --- FullCalendar Base Styles --- */
+.fc {
+  --fc-button-bg-color: var(--primary);
+  --fc-button-border-color: var(--primary);
+  --fc-button-hover-bg-color: oklch(0.6 0.18 245);
+  --fc-button-hover-border-color: oklch(0.6 0.18 245);
+  --fc-button-active-bg-color: oklch(0.55 0.18 245);
+  --fc-button-active-border-color: oklch(0.55 0.18 245);
+}
+
+/* --- FullCalendar: responsive tweaks for mobile --- */
+/* Scoped to the wrapper class `fc-responsive` added to BookingCalendar */
+@media (max-width: 640px) {
+  .fc-responsive .fc .fc-toolbar {
+    padding: 0.25rem 0.5rem;
+  }
+
+  .fc-responsive .fc .fc-toolbar-title {
+    font-size: 1rem;
+    line-height: 1.25rem;
+  }
+
+  .fc-responsive .fc .fc-button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 0.375rem;
+  }
+
+  .fc-responsive .fc .fc-button-group {
+    gap: 0.25rem;
+  }
+
+  .fc-responsive .fc .fc-daygrid-day-top,
+  .fc-responsive .fc .fc-col-header-cell {
+    font-size: 0.75rem;
+  }
+}

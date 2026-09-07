@@ -1,0 +1,15 @@
+npm info using npm@10.8.1
+npm info using node@v24.11.1
+src/features/bookings/BookingDetailModal.tsx(94,30): error TS2322: Type '"APPROVED" | "REJECTED" | "PENDING" | "CANCELLED" | "COMPLETED"' is not assignable to type '"approved" | "rejected" | "pending" | "cancelled" | "completed"'.
+  Type '"APPROVED"' is not assignable to type '"approved" | "rejected" | "pending" | "cancelled" | "completed"'. Did you mean '"approved"'?
+src/features/bookings/RoomDetailModal.tsx(155,28): error TS2339: Property 'building' does not exist on type 'Room'.
+src/features/bookings/RoomDetailModal.tsx(155,45): error TS2339: Property 'floor' does not exist on type 'Room'.
+src/features/bookings/RoomDetailModal.tsx(155,59): error TS2339: Property 'location' does not exist on type 'Room'.
+src/features/bookings/RoomDetailModal.tsx(161,39): error TS2339: Property 'building' does not exist on type 'Room'.
+src/features/bookings/RoomDetailModal.tsx(168,51): error TS2339: Property 'building' does not exist on type 'Room'.
+src/features/bookings/RoomDetailModal.tsx(173,39): error TS2339: Property 'floor' does not exist on type 'Room'.
+src/features/bookings/RoomDetailModal.tsx(180,51): error TS2339: Property 'floor' does not exist on type 'Room'.
+src/features/bookings/RoomDetailModal.tsx(185,39): error TS2339: Property 'location' does not exist on type 'Room'.
+src/features/bookings/RoomDetailModal.tsx(192,51): error TS2339: Property 'location' does not exist on type 'Room'.
+src/features/documents/components/SignDocumentContent.tsx(54,10): error TS6133: 'isSignatureEmbedded' is declared but its value is never read.
+src/hooks/useSignaturePage.ts(80,21): error TS2353: Object literal may only specify known properties, and 'editId' does not exist in type '{ status: string; } | ParamsReducerFn<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, RootRouteChildren, FileRouteTypes, unknown, unknown, undefined>, "never", false, RouterHistory, Record<...>>, "SEARCH", string, "/peminjam/pinjam">'.

@@ -1,0 +1,3 @@
+npm info using npm@10.8.1
+npm info using node@v24.11.1
+npm info ok
