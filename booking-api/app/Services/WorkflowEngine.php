@@ -31,7 +31,7 @@ class WorkflowEngine
 
             try {
                 $document->load(['unit', 'workflow']);
-                $organizationType = strtolower($document->unit->category ?? 'hmd');
+                $organizationType = DocumentGenerationService::organizationTypeForCategory($document->unit->category ?? null);
 
                 \Log::info("[WorkflowEngine] Regenerating approval sheet after approve", [
                     'document_id' => $document->id,
@@ -81,37 +81,13 @@ class WorkflowEngine
 
             // 4. Jika TIDAK ADA langkah selanjutnya -> SELESAI
             if (!$nextStepConfig) {
+                $this->finalizeRoomBookings($document, $actor);
+
                 $document->update([
                     'status' => 'APPROVED',
                     'completed_at' => now(),
                     'current_holder_id' => null,
                 ]);
-
-                // Update or Create RoomBooking
-                $content = $document->content;
-                $booking = RoomBooking::where('document_id', $document->id)->first();
-
-                if ($booking) {
-                    $booking->update([
-                        'status' => 'APPROVED',
-                        'approved_by' => $actor->id,
-                        'approved_at' => now(),
-                    ]);
-                } else if (isset($content['room_id']) && isset($content['booking_date'])) {
-                    // Create if not exists (e.g. from Proposal Only -> Booking flow if implemented later, or backup)
-                    RoomBooking::create([
-                        'document_id' => $document->id,
-                        'room_id' => $content['room_id'],
-                        'booked_by' => $document->creator_id,
-                        'booking_date' => $content['booking_date'],
-                        'start_time' => $content['start_time'] ?? '08:00',
-                        'end_time' => $content['end_time'] ?? '16:00',
-                        'purpose' => $content['event_name'] ?? ($document->title ?? 'Booking'),
-                        'status' => 'APPROVED',
-                        'approved_by' => $actor->id,
-                        'approved_at' => now(),
-                    ]);
-                }
 
                 return 'Dokumen telah disetujui sepenuhnya dan proses selesai.';
             }
@@ -139,6 +115,73 @@ class WorkflowEngine
     }
 
     /**
+     * Setujui semua booking ruangan milik dokumen yang sudah disetujui penuh.
+     *
+     * - Semua booking PENDING dokumen ini disetujui (bukan hanya yang pertama).
+     * - Booking CANCELLED/REJECTED lama tidak dihidupkan kembali.
+     * - Ketersediaan ruangan dicek ulang; jika bentrok dengan booking lain yang
+     *   sudah APPROVED, persetujuan dibatalkan (exception, transaksi rollback).
+     * - Jika dokumen belum pernah punya booking tapi content berisi data ruangan,
+     *   booking dibuat dari content.
+     */
+    public function finalizeRoomBookings(Document $document, User $actor): void
+    {
+        $pending = RoomBooking::with('room')
+            ->where('document_id', $document->id)
+            ->where('status', 'PENDING')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($pending as $booking) {
+            if (!$booking->approve($actor)) {
+                throw new \Exception(
+                    "Ruangan {$booking->room?->name} pada " . $booking->booking_date->format('d-m-Y') .
+                    ' ' . substr($booking->start_time, 0, 5) . '-' . substr($booking->end_time, 0, 5) .
+                    ' sudah dipakai booking lain yang disetujui. Kembalikan dokumen untuk revisi jadwal/ruangan.',
+                    400
+                );
+            }
+        }
+
+        // Booking dari content hanya dibuat jika dokumen belum pernah punya
+        // booking sama sekali (booking yang dibatalkan pengguna tidak dihidupkan lagi).
+        $hasAnyBooking = RoomBooking::where('document_id', $document->id)->exists();
+
+        $content = $document->content ?? [];
+        if ($hasAnyBooking || empty($content['room_id']) || empty($content['booking_date'])) {
+            return;
+        }
+
+        $startTime = $content['start_time'] ?? '09:00';
+        $endTime = $content['end_time'] ?? '17:00';
+
+        $room = \App\Models\Room::find($content['room_id']);
+        if (!$room) {
+            throw new \Exception('Ruangan pada dokumen tidak ditemukan.', 400);
+        }
+        if (!$room->isAvailable($content['booking_date'], $startTime, $endTime, null, $document->id)) {
+            throw new \Exception(
+                "Ruangan {$room->name} pada {$content['booking_date']} {$startTime}-{$endTime} sudah dipakai booking lain. " .
+                'Kembalikan dokumen untuk revisi jadwal/ruangan.',
+                400
+            );
+        }
+
+        RoomBooking::create([
+            'document_id' => $document->id,
+            'room_id' => $room->id,
+            'booked_by' => $document->creator_id,
+            'booking_date' => $content['booking_date'],
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+            'purpose' => $content['event_name'] ?? ($document->title ?? 'Booking'),
+            'status' => 'APPROVED',
+            'approved_by' => $actor->id,
+            'approved_at' => now(),
+        ]);
+    }
+
+    /**
      * Logika Reject: Tolak dokumen secara final, hentikan alur.
      */
     public function rejectDocument(Document $document, User $actor, string $note)
@@ -160,16 +203,12 @@ class WorkflowEngine
                 'current_holder_id' => null,
             ]);
 
-            // 3. Ikut tolak booking ruangan terkait (jika ada) agar tidak menggantung PENDING
-            $booking = RoomBooking::where('document_id', $document->id)->first();
-            if ($booking && $booking->status === 'PENDING') {
-                $booking->update([
-                    'status' => 'REJECTED',
-                    'approved_by' => $actor->id,
-                    'approved_at' => now(),
-                    'rejection_reason' => $note,
-                ]);
-            }
+            // 3. Ikut tolak SEMUA booking ruangan terkait yang masih PENDING
+            //    (satu dokumen bisa punya beberapa booking lewat batch)
+            RoomBooking::where('document_id', $document->id)
+                ->where('status', 'PENDING')
+                ->get()
+                ->each(fn (RoomBooking $booking) => $booking->reject($actor, $note));
 
             return 'Dokumen ditolak.';
         });
@@ -190,21 +229,41 @@ class WorkflowEngine
                 throw new \Exception("User target tidak ada dalam riwayat dokumen ini.");
             }
 
-            // 2. Catat Log "RETURNED"
+            // 2. Tentukan langkah tujuan. Jika dikembalikan ke approver sebelumnya
+            //    (bukan pembuat), posisi langkah harus mundur ke langkah milik approver
+            //    tersebut. Kalau tidak, saat ia approve lagi dokumen akan meloncati
+            //    langkah-langkah di antaranya. (Jika dikembalikan ke pembuat,
+            //    submitDocument yang menentukan langkah saat diajukan ulang.)
+            $targetStep = null;
+            if ((int) $targetUserId !== (int) $document->creator_id) {
+                $targetStep = DocumentLog::where('document_id', $document->id)
+                    ->where('user_id', $targetUserId)
+                    ->where('action', 'APPROVED')
+                    ->where('step_snapshot', '>', 0)
+                    ->latest('id')
+                    ->value('step_snapshot');
+            }
+
+            // 3. Catat Log "RETURNED". step_snapshot = langkah tujuan, dipakai untuk
+            //    menganggap persetujuan langkah >= tujuan sudah tidak berlaku.
             DocumentLog::create([
                 'document_id' => $document->id,
                 'user_id' => $actor->id, // Manager
                 'action' => 'RETURNED',
                 'note' => $note, // "Salah ketik, tolong perbaiki"
+                'step_snapshot' => $targetStep,
             ]);
 
-            // 3. Kembalikan Bola (Update Master)
-            // Note: Kita tidak mereset 'current_step_order' secara hardcode,
-            // karena bisa jadi alurnya loncat. Biarkan status REVISION menanganinya.
-            $document->update([
+            // 4. Kembalikan Bola (Update Master)
+            $updates = [
                 'current_holder_id' => $targetUserId,
-                'status' => 'REVISION'
-            ]);
+                'status' => 'REVISION',
+            ];
+            if ($targetStep) {
+                $updates['current_step_order'] = (int) $targetStep;
+            }
+
+            $document->update($updates);
 
             return "Dokumen dikembalikan untuk revisi.";
         });

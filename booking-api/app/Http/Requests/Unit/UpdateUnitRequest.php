@@ -15,7 +15,7 @@ class UpdateUnitRequest extends FormRequest
     {
         return [
             'name'      => 'sometimes|string|max:255',
-            'category'  => 'sometimes|in:FAKULTAS,JURUSAN,PRODI,HIMA',
+            'category'  => 'sometimes|in:FAKULTAS,DEPARTEMEN,HMD,BEM,SENAT,UKM',
             'parent_id' => 'nullable|exists:units,id',
         ];
     }
@@ -23,7 +23,7 @@ class UpdateUnitRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'category.in'      => 'Kategori harus FAKULTAS, JURUSAN, PRODI, atau HIMA',
+            'category.in'      => 'Kategori harus salah satu dari: FAKULTAS, DEPARTEMEN, HMD, BEM, SENAT, UKM',
             'parent_id.exists' => 'Unit induk tidak ditemukan',
         ];
     }

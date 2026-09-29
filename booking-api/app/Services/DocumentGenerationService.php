@@ -13,6 +13,59 @@ use App\Models\DocumentLog;
 class DocumentGenerationService
 {
     /**
+     * Petakan kategori unit (HMD/BEM/UKM/SENAT) ke organization_type template.
+     * Harus sama dengan nilai yang diizinkan di tabel document_templates
+     * (hmd, bem_ukm, senat).
+     */
+    public static function organizationTypeForCategory(?string $category): string
+    {
+        return match (strtoupper((string) $category)) {
+            'BEM', 'UKM' => 'bem_ukm',
+            'SENAT' => 'senat',
+            default => 'hmd',
+        };
+    }
+
+    /**
+     * Ambil log APPROVED yang masih berlaku, diurutkan per langkah.
+     *
+     * Saat dokumen diajukan ulang setelah revisi (log SUBMITTED) atau
+     * dikembalikan ke approver sebelumnya (log RETURNED) dan alurnya diulang
+     * dari langkah R, persetujuan lama untuk langkah >= R sudah tidak berlaku
+     * (step_snapshot kedua log tersebut menyimpan R). Untuk setiap langkah
+     * hanya persetujuan terakhir yang dipakai.
+     */
+    public static function effectiveApprovalLogs(Document $document)
+    {
+        $logs = DocumentLog::where('document_id', $document->id)
+            ->whereIn('action', ['APPROVED', 'SUBMITTED', 'RETURNED'])
+            ->with(['user.role', 'user.unit'])
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        $byStep = [];
+        foreach ($logs as $log) {
+            if ($log->action !== 'APPROVED') {
+                $restartStep = (int) $log->step_snapshot;
+                if ($restartStep > 0) {
+                    foreach (array_keys($byStep) as $step) {
+                        if ($step >= $restartStep) {
+                            unset($byStep[$step]);
+                        }
+                    }
+                }
+                continue;
+            }
+            $byStep[(int) $log->step_snapshot] = $log;
+        }
+
+        ksort($byStep);
+
+        return collect(array_values($byStep));
+    }
+
+    /**
      * Generate document dari template dengan mengisi data
      */
     public function generateFromTemplate(
@@ -650,11 +703,7 @@ class DocumentGenerationService
 
         // Get approver signatures if document has been approved
         if ($document->workflow) {
-            $logs = DocumentLog::where('document_id', $document->id)
-                              ->where('action', 'APPROVED')
-                              ->with(['user.role', 'user.unit'])
-                              ->orderBy('created_at')
-                              ->get();
+            $logs = self::effectiveApprovalLogs($document);
 
             \Log::info("[SIGNATURE] Checking approver signatures", [
                 'approved_logs_count' => $logs->count()

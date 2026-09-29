@@ -1,3 +1,14 @@
+export const UNIT_CATEGORIES = [
+  { value: 'FAKULTAS', label: 'Fakultas' },
+  { value: 'DEPARTEMEN', label: 'Departemen' },
+  { value: 'HMD', label: 'Himpunan Mahasiswa (HMD)' },
+  { value: 'BEM', label: 'BEM' },
+  { value: 'SENAT', label: 'Senat Mahasiswa' },
+  { value: 'UKM', label: 'UKM' },
+] as const;
+
+export type UnitCategory = (typeof UNIT_CATEGORIES)[number]['value'];
+
 import api from '@/lib/axios';
 
 export interface Unit {
@@ -5,7 +16,7 @@ export interface Unit {
   name: string;
   code: string;
   description?: string;
-  category: 'FAKULTAS' | 'PRODI' | 'HIMA';
+  category: UnitCategory;
   parent_id?: number;
   parent?: Unit;
   children?: Unit[];
@@ -27,7 +38,7 @@ export interface CreateUnitData {
   name: string;
   code: string;
   description?: string;
-  category: 'FAKULTAS' | 'PRODI' | 'HIMA';
+  category: UnitCategory;
   parent_id?: number;
 }
 
@@ -35,7 +46,7 @@ export interface UpdateUnitData {
   name?: string;
   code?: string;
   description?: string;
-  category?: 'FAKULTAS' | 'PRODI' | 'HIMA';
+  category?: UnitCategory;
   parent_id?: number;
 }
 

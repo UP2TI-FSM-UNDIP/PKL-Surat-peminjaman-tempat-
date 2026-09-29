@@ -1,8 +1,8 @@
 export const categories = [
-  { value: 'HIMA', label: 'HIMA' },
+  { value: 'HMD', label: 'HMD' },
+  { value: 'BEM', label: 'BEM' },
+  { value: 'SENAT', label: 'Senat' },
   { value: 'UKM', label: 'UKM' },
-  { value: 'KOMUNITAS', label: 'Komunitas' },
-  { value: 'FAKULTAS', label: 'Fakultas' },
 ] as const;
 
 export const scopeTypes = [

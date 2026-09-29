@@ -72,7 +72,7 @@ function RouteComponent() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    applies_to_category: 'HIMA',
+    applies_to_category: 'HMD',
   });
 
   // Form states for steps
@@ -158,7 +158,7 @@ function RouteComponent() {
   };
 
   const handleCreateWorkflow = () => {
-    setFormData({ name: '', description: '', applies_to_category: 'HIMA' });
+    setFormData({ name: '', description: '', applies_to_category: 'HMD' });
     setSteps([]);
     setIsCreateModalOpen(true);
   };
@@ -237,7 +237,7 @@ function RouteComponent() {
       await workflowService.createWorkflow(createData);
       setIsCreateModalOpen(false);
       loadWorkflows();
-      setFormData({ name: '', description: '', applies_to_category: 'HIMA' });
+      setFormData({ name: '', description: '', applies_to_category: 'HMD' });
       setSteps([]);
     } catch (err) {
       const error = err as AxiosError<{ message: string }>;

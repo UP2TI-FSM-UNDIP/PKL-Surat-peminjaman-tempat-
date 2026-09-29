@@ -62,18 +62,18 @@ class RoomBookingService
         return $bookings;
     }
 
-    public function createBooking(User $user, array $data): RoomBooking
+    /**
+     * Aturan jadwal peminjaman: minimal N hari sebelum hari-H, hanya hari Sabtu,
+     * jam 09:00 - 17:00, dan jam selesai setelah jam mulai.
+     */
+    public function validateScheduleRules(string $date, string $start, string $end): void
     {
-        $document = Document::findOrFail($data['document_id']);
-
-        // Cek Tanggal & Hari Sabtu
         try {
-            $bookingDate = Carbon::parse($data['booking_date']);
+            $bookingDate = Carbon::parse($date);
         } catch (\Exception $e) {
             throw new \Exception('Tanggal peminjaman tidak valid', 422);
         }
 
-        // Validasi minimal hari pengajuan
         $minDays = config('booking.min_booking_days', 8);
         $daysUntilBooking = Carbon::today()->diffInDays($bookingDate, false);
         if ($daysUntilBooking < $minDays) {
@@ -84,15 +84,25 @@ class RoomBookingService
             throw new \Exception('Peminjaman hanya diperbolehkan pada hari Sabtu', 400);
         }
 
-        // Cek Jam Operasional
-        $startTime = Carbon::createFromFormat('H:i', $data['start_time']);
-        $endTime = Carbon::createFromFormat('H:i', $data['end_time']);
+        try {
+            $startTime = Carbon::createFromFormat('H:i', substr($start, 0, 5));
+            $endTime = Carbon::createFromFormat('H:i', substr($end, 0, 5));
+        } catch (\Exception $e) {
+            throw new \Exception('Format jam peminjaman tidak valid', 422);
+        }
         $open = Carbon::createFromTime(9, 0);
         $close = Carbon::createFromTime(17, 0);
 
         if ($startTime->lt($open) || $endTime->gt($close) || !$endTime->gt($startTime)) {
             throw new \Exception('Waktu peminjaman harus antara 09:00 - 17:00 dan waktu selesai harus valid', 400);
         }
+    }
+
+    public function createBooking(User $user, array $data): RoomBooking
+    {
+        $document = Document::findOrFail($data['document_id']);
+
+        $this->validateScheduleRules($data['booking_date'], $data['start_time'], $data['end_time']);
 
         // Cek Akses Dokumen
         if ($document->creator_id !== $user->id && $document->current_holder_id !== $user->id) {
@@ -154,6 +164,15 @@ class RoomBookingService
             $date = $requestParams['booking_date'] ?? $booking->booking_date->format('Y-m-d');
             $startTime = $requestParams['start_time'] ?? substr($booking->start_time, 0, 5);
             $endTime = $requestParams['end_time'] ?? substr($booking->end_time, 0, 5);
+
+            // Aturan jadwal hanya dicek jika jadwal benar-benar berubah
+            // (frontend selalu mengirim ulang tanggal/jam yang sama saat submit).
+            $scheduleChanged = $date !== $booking->booking_date->format('Y-m-d')
+                || substr($startTime, 0, 5) !== substr($booking->start_time, 0, 5)
+                || substr($endTime, 0, 5) !== substr($booking->end_time, 0, 5);
+            if ($scheduleChanged) {
+                $this->validateScheduleRules($date, $startTime, $endTime);
+            }
 
             $room = Room::findOrFail($roomId);
             $isAvailable = $room->isAvailable(

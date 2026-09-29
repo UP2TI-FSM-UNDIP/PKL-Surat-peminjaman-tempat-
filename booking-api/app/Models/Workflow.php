@@ -30,10 +30,10 @@ class Workflow extends Model
 
     /**
      * Scope Helper: Ambil workflow berdasarkan kategori unit (HIMA/UKM/etc)
-     * Cara pakai: Workflow::forCategory('HIMA')->get();
+     * Cara pakai: Workflow::forCategory('HMD')->get();
      */
     public function scopeForCategory($query, $category)
     {
-        return $query->where('applies_to_category', $category);
+        return $query->whereRaw('UPPER(applies_to_category) = ?', [strtoupper((string) $category)]);
     }
 }

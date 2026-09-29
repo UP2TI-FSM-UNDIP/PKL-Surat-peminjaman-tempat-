@@ -30,7 +30,7 @@ class RoomBookingController extends Controller
         ]);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $booking = RoomBooking::with([
             'room',
@@ -38,6 +38,20 @@ class RoomBookingController extends Controller
             'bookedBy.unit',
             'approvedBy',
         ])->findOrFail($id);
+
+        // Authorization: booker, admin, sumber daya, atau yang punya akses ke dokumennya
+        $user = $request->user();
+        $isAuthorized = $booking->booked_by === $user->id
+            || in_array($user->role->slug, ['admin', 'sumber-daya'])
+            || $booking->approved_by === $user->id
+            || ($booking->document && app(\App\Services\DocumentService::class)->checkDocumentAccess($booking->document, $user));
+
+        if (!$isAuthorized) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk melihat booking ini',
+            ], 403);
+        }
 
         return response()->json([
             'success' => true,
@@ -107,6 +121,17 @@ class RoomBookingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Booking dengan status ' . $booking->status . ' tidak bisa diupdate',
+            ], 400);
+        }
+
+        // Jadwal/ruangan tidak boleh diubah saat dokumen sedang dalam proses
+        // persetujuan, karena approver menyetujui jadwal yang tertulis di dokumen.
+        // Perubahan hanya lewat revisi (dokumen DRAFT/REVISION).
+        $documentStatus = $booking->document?->status;
+        if ($user->role->slug !== 'admin' && $documentStatus && !in_array($documentStatus, ['DRAFT', 'REVISION'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking tidak bisa diubah karena dokumen sedang diproses (' . $documentStatus . '). Minta approver mengembalikan dokumen untuk revisi.',
             ], 400);
         }
 

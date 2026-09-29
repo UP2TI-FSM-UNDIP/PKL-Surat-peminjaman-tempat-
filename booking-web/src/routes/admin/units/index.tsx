@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
 import api from '@/lib/axios';
-import { unitService, type Unit } from '@/services/unit.service';
+import { unitService, UNIT_CATEGORIES, type Unit, type UnitCategory } from '@/services/unit.service';
 import { Button } from '@/components/ui/button/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Pencil, Trash2, Search, Eye } from 'lucide-react';
@@ -52,7 +52,7 @@ function RouteComponent() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'FAKULTAS' | 'PRODI' | 'HIMA'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | UnitCategory>('all');
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -66,7 +66,7 @@ function RouteComponent() {
     name: '',
     code: '',
     description: '',
-    category: 'PRODI' as 'FAKULTAS' | 'PRODI' | 'HIMA',
+    category: 'HMD' as UnitCategory,
     parent_id: undefined as number | undefined,
   });
   const [formError, setFormError] = useState('');
@@ -132,7 +132,7 @@ function RouteComponent() {
       name: '',
       code: '',
       description: '',
-      category: 'PRODI',
+      category: 'HMD',
       parent_id: undefined,
     });
     setFormError('');
@@ -259,8 +259,11 @@ function RouteComponent() {
   const getCategoryBadge = (category: string) => {
     const styles = {
       FAKULTAS: 'bg-blue-100 text-blue-700',
-      PRODI: 'bg-green-100 text-green-700',
-      HIMA: 'bg-purple-100 text-purple-700',
+      DEPARTEMEN: 'bg-green-100 text-green-700',
+      HMD: 'bg-purple-100 text-purple-700',
+      BEM: 'bg-orange-100 text-orange-700',
+      SENAT: 'bg-amber-100 text-amber-700',
+      UKM: 'bg-teal-100 text-teal-700',
     };
     return (
       <span
@@ -332,9 +335,7 @@ function RouteComponent() {
           <div className='flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide max-w-full'>
             {[
               { id: 'all', label: 'Semua Kategori' },
-              { id: 'FAKULTAS', label: 'Fakultas' },
-              { id: 'PRODI', label: 'Program Studi' },
-              { id: 'HIMA', label: 'Himpunan Mahasiswa' }
+              ...UNIT_CATEGORIES.map((c) => ({ id: c.value, label: c.label })),
             ].map((cat) => (
               <Button
                 key={cat.id}
@@ -508,7 +509,7 @@ function RouteComponent() {
                   onValueChange={(value) =>
                     setFormData({
                       ...formData,
-                      category: value as 'FAKULTAS' | 'PRODI' | 'HIMA',
+                      category: value as UnitCategory,
                     })
                   }
                 >
@@ -516,9 +517,11 @@ function RouteComponent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='FAKULTAS'>Fakultas</SelectItem>
-                    <SelectItem value='PRODI'>Program Studi</SelectItem>
-                    <SelectItem value='HIMA'>Himpunan Mahasiswa</SelectItem>
+                    {UNIT_CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -628,7 +631,7 @@ function RouteComponent() {
                   onValueChange={(value) =>
                     setFormData({
                       ...formData,
-                      category: value as 'FAKULTAS' | 'PRODI' | 'HIMA',
+                      category: value as UnitCategory,
                     })
                   }
                 >
@@ -636,9 +639,11 @@ function RouteComponent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='FAKULTAS'>Fakultas</SelectItem>
-                    <SelectItem value='PRODI'>Program Studi</SelectItem>
-                    <SelectItem value='HIMA'>Himpunan Mahasiswa</SelectItem>
+                    {UNIT_CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

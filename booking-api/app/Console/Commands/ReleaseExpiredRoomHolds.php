@@ -28,14 +28,26 @@ class ReleaseExpiredRoomHolds extends Command
 
         $this->info("Releasing PENDING bookings older than {$holdDays} days (before {$threshold})");
 
+        // Hanya lepas booking yang dokumennya tidak sedang diproses
+        // (mis. draft yang tidak pernah diajukan). Booking milik dokumen
+        // IN_PROGRESS/REVISION tetap ditahan sampai alur persetujuan selesai.
         $expired = RoomBooking::where('status', 'PENDING')
             ->where('created_at', '<', $threshold)
+            ->where(function ($q) {
+                $q->whereNull('document_id')
+                  ->orWhereDoesntHave('document', function ($d) {
+                      $d->whereIn('status', ['IN_PROGRESS', 'REVISION']);
+                  });
+            })
             ->get();
 
         $count = $expired->count();
 
         foreach ($expired as $b) {
-            $b->update(['status' => 'CANCELLED']);
+            $b->update([
+                'status' => 'CANCELLED',
+                'rejection_reason' => "Otomatis dibatalkan: tidak diproses lebih dari {$holdDays} hari",
+            ]);
             \Log::info('[ReleaseExpiredRoomHolds] Released booking', ['booking_id' => $b->id]);
         }
 

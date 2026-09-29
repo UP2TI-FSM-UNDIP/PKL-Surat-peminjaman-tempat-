@@ -146,6 +146,18 @@ class DocumentController extends Controller
             ], 403);
         }
 
+        // Status check: dokumen yang sedang diproses, atau dokumen REVISION yang
+        // dikembalikan ke approver sebelumnya (bukan ke pembuat — pembuat harus
+        // memperbaiki lalu mengajukan ulang lewat submit).
+        $canApprove = $document->status === 'IN_PROGRESS'
+            || ($document->status === 'REVISION' && $document->creator_id !== $user->id);
+        if (!$canApprove) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dokumen dalam status ' . $document->status . ' tidak dapat disetujui',
+            ], 400);
+        }
+
         try {
             $result = $this->documentService->approveDocument($document, $user, $validated['note'] ?? null);
 
@@ -162,7 +174,7 @@ class DocumentController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => ($code === 400) ? $e->getMessage() : 'Gagal menyetujui dokumen. Silakan coba lagi.',
+                'message' => ($e instanceof \Illuminate\Database\QueryException) ? 'Gagal menyetujui dokumen. Silakan coba lagi.' : $e->getMessage(),
             ], $code);
         }
     }
@@ -205,7 +217,7 @@ class DocumentController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => ($code === 400) ? $e->getMessage() : 'Gagal menolak dokumen. Silakan coba lagi.',
+                'message' => ($e instanceof \Illuminate\Database\QueryException) ? 'Gagal menolak dokumen. Silakan coba lagi.' : $e->getMessage(),
             ], $code);
         }
     }
@@ -224,6 +236,13 @@ class DocumentController extends Controller
             ], 403);
         }
 
+        if (!in_array($document->status, ['IN_PROGRESS', 'REVISION'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dokumen dalam status ' . $document->status . ' tidak dapat dikembalikan',
+            ], 400);
+        }
+
         try {
             $result = $this->documentService->reviseDocument($document, $user, $validated['target_user_id'], $validated['note']);
 
@@ -234,10 +253,13 @@ class DocumentController extends Controller
             ]);
         } catch (\Exception $e) {
             \Log::error('Failed to revise document', ['document_id' => $id, 'error' => $e->getMessage()]);
+            $code = $e->getCode() ?: 500;
+            if ($code < 100 || $code > 599) $code = 500;
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengembalikan dokumen. Silakan coba lagi.',
-            ], 500);
+                'message' => ($e instanceof \Illuminate\Database\QueryException) ? 'Gagal mengembalikan dokumen. Silakan coba lagi.' : $e->getMessage(),
+            ], $code);
         }
     }
 

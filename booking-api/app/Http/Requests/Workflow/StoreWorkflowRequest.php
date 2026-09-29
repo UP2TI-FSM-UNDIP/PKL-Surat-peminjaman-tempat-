@@ -16,7 +16,7 @@ class StoreWorkflowRequest extends FormRequest
         return [
             'name'                         => 'required|string|max:255',
             'description'                  => 'nullable|string',
-            'applies_to_category'          => 'required|string',
+            'applies_to_category'          => 'required|string|in:HMD,BEM,SENAT,UKM',
             'steps'                        => 'required|array|min:1',
             'steps.*.step_order'           => 'required|integer',
             'steps.*.step_name'            => 'required|string',

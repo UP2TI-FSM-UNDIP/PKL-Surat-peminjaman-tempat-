@@ -16,7 +16,7 @@ class UpdateWorkflowRequest extends FormRequest
         return [
             'name'                => 'sometimes|string|max:255',
             'description'         => 'nullable|string',
-            'applies_to_category' => 'sometimes|string',
+            'applies_to_category' => 'sometimes|string|in:HMD,BEM,SENAT,UKM',
         ];
     }
 }

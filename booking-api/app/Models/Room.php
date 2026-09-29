@@ -76,8 +76,16 @@ class Room extends Model
             ->where(function ($q) use ($threshold) {
                 $q->where('status', 'APPROVED')
                   ->orWhere(function ($q2) use ($threshold) {
+                      // PENDING tetap menahan ruangan selama masih baru ATAU
+                      // dokumennya sedang dalam proses persetujuan (proses bisa
+                      // lebih lama dari hold_days).
                       $q2->where('status', 'PENDING')
-                         ->where('created_at', '>=', $threshold);
+                         ->where(function ($q3) use ($threshold) {
+                             $q3->where('created_at', '>=', $threshold)
+                                ->orWhereHas('document', function ($d) {
+                                    $d->whereIn('status', ['IN_PROGRESS', 'REVISION']);
+                                });
+                         });
                   });
             })
             ->where('start_time', '<', $endTime)

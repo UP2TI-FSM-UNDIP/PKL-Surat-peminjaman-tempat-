@@ -26,7 +26,7 @@ class WorkflowService
 
         if ($userUnitCategory !== 'FAKULTAS' && $user->role?->slug !== 'admin') {
             abort_if(
-                $workflow->applies_to_category !== $userUnitCategory,
+                strcasecmp((string) $workflow->applies_to_category, (string) $userUnitCategory) !== 0,
                 403,
                 'Anda tidak memiliki akses ke workflow ini'
             );

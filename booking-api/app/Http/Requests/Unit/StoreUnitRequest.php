@@ -17,7 +17,7 @@ class StoreUnitRequest extends FormRequest
             'name'        => 'required|string|max:255',
             'code'        => 'required|string|max:255|unique:units,code',
             'description' => 'nullable|string',
-            'category'    => 'required|in:FAKULTAS,PRODI,HIMA',
+            'category'    => 'required|in:FAKULTAS,DEPARTEMEN,HMD,BEM,SENAT,UKM',
             'parent_id'   => 'nullable|exists:units,id',
         ];
     }
@@ -29,7 +29,7 @@ class StoreUnitRequest extends FormRequest
             'code.required'     => 'Kode unit wajib diisi',
             'code.unique'       => 'Kode unit sudah digunakan',
             'category.required' => 'Kategori unit wajib dipilih',
-            'category.in'       => 'Kategori harus FAKULTAS, PRODI, atau HIMA',
+            'category.in'       => 'Kategori harus salah satu dari: FAKULTAS, DEPARTEMEN, HMD, BEM, SENAT, UKM',
             'parent_id.exists'  => 'Unit induk tidak ditemukan',
         ];
     }

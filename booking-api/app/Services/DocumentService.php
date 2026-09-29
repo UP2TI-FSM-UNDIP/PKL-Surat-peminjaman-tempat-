@@ -214,6 +214,26 @@ class DocumentService
 
         $validated['content'] = $content;
 
+        // Workflow harus sesuai kategori unit pembuat. Approver dicari relatif
+        // terhadap unit pembuat (SELF/PARENT), jadi misalnya user unit Fakultas
+        // yang memakai workflow HMD pasti gagal saat submit/approve.
+        // Admin & Sumber Daya dikecualikan (booking manual, langsung disetujui).
+        $roleSlug = $user->role->slug ?? '';
+        if (!in_array($roleSlug, ['admin', 'sumber-daya'])) {
+            $workflow = \App\Models\Workflow::find($validated['workflow_id']);
+            $unitCategory = $user->unit?->category;
+            if (!$unitCategory || strcasecmp((string) $workflow?->applies_to_category, $unitCategory) !== 0) {
+                throw new \Illuminate\Validation\ValidationException(
+                    \Illuminate\Support\Facades\Validator::make([], []),
+                    response()->json([
+                        'success' => false,
+                        'message' => 'Alur pengajuan tidak sesuai dengan unit Anda (' . ($user->unit?->name ?? 'tanpa unit') . '). Hubungi admin untuk memperbaiki unit akun Anda.',
+                        'errors' => ['workflow_id' => ['Workflow tidak sesuai dengan kategori unit Anda']],
+                    ], 422)
+                );
+            }
+        }
+
         // Prevent duplicate reservations
         $metaData = $validated['meta_data'] ?? [];
         if (isset($metaData['step']) && $metaData['step'] === 'reservation') {
@@ -296,6 +316,7 @@ class DocumentService
                     'status' => 'APPROVED',
                     'current_step_order' => 999,
                     'current_holder_id' => null,
+                    'completed_at' => now(),
                 ]);
 
                 DocumentLog::create([
@@ -306,21 +327,7 @@ class DocumentService
                     'step_snapshot' => 999,
                 ]);
 
-                $content = $document->content;
-                if (isset($content['room_id']) && isset($content['booking_date'])) {
-                    RoomBooking::create([
-                        'document_id' => $document->id,
-                        'room_id' => $content['room_id'],
-                        'booked_by' => $user->id,
-                        'booking_date' => $content['booking_date'],
-                        'start_time' => $content['start_time'] ?? '08:00',
-                        'end_time' => $content['end_time'] ?? '16:00',
-                        'purpose' => $content['event_name'] ?? 'Manual Booking',
-                        'status' => 'APPROVED',
-                        'approved_by' => $user->id,
-                        'approved_at' => now(),
-                    ]);
-                }
+                $this->workflowEngine->finalizeRoomBookings($document, $user);
 
                 return;
             }
@@ -329,36 +336,59 @@ class DocumentService
             $currentStep = 1;
 
             // HANDLE REVISION LOGIC (Requirements #8 & #9)
+            // Bandingkan jadwal di content dengan jadwal saat terakhir diajukan.
+            // (Frontend meng-update booking SEBELUM submit, jadi membandingkan
+            // dengan RoomBooking selalu menghasilkan "tidak berubah".)
+            $content = $document->content ?? [];
             if ($originalStatus === 'REVISION') {
-                $lastBooking = RoomBooking::where('document_id', $document->id)
-                    ->whereNotIn('status', ['CANCELLED', 'REJECTED'])
-                    ->latest()
-                    ->first();
+                $previous = $document->meta_data['submitted_booking'] ?? null;
 
-                if ($lastBooking) {
-                    $newContent = $document->content;
-                    $newDate = $newContent['booking_date'] ?? null;
-                    $newRoomId = $newContent['room_id'] ?? null;
+                if (!$previous) {
+                    // Dokumen lama tanpa snapshot: fallback ke booking terakhir
+                    $lastBooking = RoomBooking::where('document_id', $document->id)
+                        ->whereNotIn('status', ['CANCELLED', 'REJECTED'])
+                        ->latest()
+                        ->first();
+                    $previous = $lastBooking ? [
+                        'room_id' => $lastBooking->room_id,
+                        'booking_date' => $lastBooking->booking_date->format('Y-m-d'),
+                    ] : null;
+                }
 
-                    $oldDate = $lastBooking->booking_date->format('Y-m-d');
-                    $oldRoomId = $lastBooking->room_id;
+                if ($previous) {
+                    $newDate = $content['booking_date'] ?? null;
+                    $newRoomId = $content['room_id'] ?? null;
 
-                    if ($newDate && $newDate !== $oldDate) {
+                    if ($newDate && $newDate !== $previous['booking_date']) {
                         // Requirement #9: Ganti tanggal -> ulang dari awal
-                        \Log::info("[Revision] Date changed from {$oldDate} to {$newDate}. Restarting workflow.");
+                        \Log::info("[Revision] Date changed from {$previous['booking_date']} to {$newDate}. Restarting workflow.");
                         $currentStep = 1;
-                    } elseif ($newRoomId && $newRoomId != $oldRoomId) {
+                    } elseif ($newRoomId && $newRoomId != $previous['room_id']) {
                         // Requirement #8: Ganti tempat saja -> langsung ke Sumber Daya
                         $sumberDayaStep = $document->workflow->steps()
                             ->where('target_role_slug', 'sumber-daya')
                             ->first();
 
                         if ($sumberDayaStep) {
-                            \Log::info("[Revision] Room changed from {$oldRoomId} to {$newRoomId}. Jumping to Sumber Daya (Step {$sumberDayaStep->step_order}).");
+                            \Log::info("[Revision] Room changed from {$previous['room_id']} to {$newRoomId}. Jumping to Sumber Daya (Step {$sumberDayaStep->step_order}).");
                             $currentStep = $sumberDayaStep->step_order;
                         }
                     }
                 }
+            }
+
+            // Pastikan booking ruangan mengikuti jadwal terbaru di dokumen dan
+            // simpan snapshot jadwal yang diajukan untuk perbandingan revisi berikutnya.
+            $this->syncBookingWithContent($document, $user);
+            if (!empty($content['room_id']) && !empty($content['booking_date'])) {
+                $meta = $document->meta_data ?? [];
+                $meta['submitted_booking'] = [
+                    'room_id' => (int) $content['room_id'],
+                    'booking_date' => $content['booking_date'],
+                    'start_time' => $content['start_time'] ?? null,
+                    'end_time' => $content['end_time'] ?? null,
+                ];
+                $document->update(['meta_data' => $meta]);
             }
 
             $firstStep = $document->workflow->steps()->where('step_order', $currentStep)->first();
@@ -376,7 +406,10 @@ class DocumentService
                 'user_id' => $user->id,
                 'action' => 'SUBMITTED',
                 'note' => $logNote,
-                'step_snapshot' => 0,
+                // Pada pengajuan ulang, simpan langkah awal ulang agar persetujuan
+                // lama untuk langkah >= ini dianggap tidak berlaku (lihat
+                // DocumentGenerationService::effectiveApprovalLogs).
+                'step_snapshot' => $originalStatus === 'REVISION' ? $currentStep : 0,
             ]);
 
             // AUTO-APPROVE JIKA SUBMITTER ADALAH SEKRETARIS (berlaku untuk step 1)
@@ -397,6 +430,7 @@ class DocumentService
                 $secondStep = $document->workflow->steps()->where('step_order', 2)->first();
 
                 if (!$secondStep) {
+                    $this->workflowEngine->finalizeRoomBookings($document, $user);
                     $document->update([
                         'status' => 'APPROVED',
                         'completed_at' => now(),
@@ -439,6 +473,81 @@ class DocumentService
         });
 
         return $document->fresh(['currentHolder', 'creator', 'logs']);
+    }
+
+    /**
+     * Samakan booking ruangan (PENDING) dengan jadwal di content dokumen.
+     *
+     * Dipanggil saat dokumen diajukan. Menangani kasus:
+     * - dokumen belum punya booking (dibuat PENDING dari content),
+     * - booking lama CANCELLED karena hold kadaluarsa (dihidupkan lagi jadi PENDING),
+     * - jadwal/ruangan diubah saat revisi tapi booking belum ikut berubah.
+     * Dokumen dengan beberapa booking (batch) tidak disentuh karena content hanya
+     * memuat satu slot.
+     */
+    private function syncBookingWithContent(Document $document, User $user): void
+    {
+        $content = $document->content ?? [];
+        if (empty($content['room_id']) || empty($content['booking_date'])
+            || empty($content['start_time']) || empty($content['end_time'])) {
+            return;
+        }
+
+        $bookings = RoomBooking::where('document_id', $document->id)
+            ->where('status', '!=', 'REJECTED')
+            ->latest('id')
+            ->get();
+
+        if ($bookings->count() > 1) {
+            return;
+        }
+
+        $booking = $bookings->first();
+        $target = [
+            'room_id' => (int) $content['room_id'],
+            'booking_date' => $content['booking_date'],
+            'start_time' => substr($content['start_time'], 0, 5),
+            'end_time' => substr($content['end_time'], 0, 5),
+        ];
+
+        if ($booking && in_array($booking->status, ['APPROVED', 'COMPLETED'])) {
+            return;
+        }
+
+        $alreadyInSync = $booking
+            && $booking->status === 'PENDING'
+            && (int) $booking->room_id === $target['room_id']
+            && $booking->booking_date->format('Y-m-d') === $target['booking_date']
+            && substr($booking->start_time, 0, 5) === $target['start_time']
+            && substr($booking->end_time, 0, 5) === $target['end_time'];
+
+        if ($alreadyInSync) {
+            return;
+        }
+
+        app(RoomBookingService::class)->validateScheduleRules(
+            $target['booking_date'], $target['start_time'], $target['end_time']
+        );
+
+        $room = \App\Models\Room::find($target['room_id']);
+        if (!$room) {
+            throw new \Exception('Ruangan yang dipilih tidak ditemukan', 400);
+        }
+        if (!$room->isAvailable($target['booking_date'], $target['start_time'], $target['end_time'], $booking?->id, $document->id)) {
+            throw new \Exception('Ruangan tidak tersedia pada jadwal yang dipilih. Silakan pilih jadwal/ruangan lain.', 400);
+        }
+
+        if ($booking) {
+            $booking->update($target + ['status' => 'PENDING', 'rejection_reason' => null]);
+            return;
+        }
+
+        RoomBooking::create($target + [
+            'document_id' => $document->id,
+            'booked_by' => $document->creator_id,
+            'purpose' => $content['event_name'] ?? ($content['purpose'] ?? $document->title),
+            'status' => 'PENDING',
+        ]);
     }
 
     public function approveDocument(Document $document, User $user, ?string $note): string
@@ -557,7 +666,8 @@ class DocumentService
             // Determine placeholders based on role
             $userRole = $user->role->slug ?? '';
             $userUnitCategory = strtoupper($user->unit->category ?? '');
-            $placeholders = $this->getSignaturePlaceholders($userRole, $userUnitCategory);
+            $approverIndex = DocumentGenerationService::effectiveApprovalLogs($document)->count() + 1;
+            $placeholders = $this->getSignaturePlaceholders($userRole, $userUnitCategory, $approverIndex);
 
             // Insert signature
             $inserted = false;
@@ -616,29 +726,36 @@ class DocumentService
         }
     }
 
-    private function getSignaturePlaceholders(string $userRole, string $userUnitCategory): array
+    /**
+     * Placeholder tempat tanda tangan current holder dibubuhkan.
+     * Nama role mengikuti slug di tabel roles dan sama dengan pemetaan di
+     * DocumentGenerationService, ditambah slot generik signature_approver_N
+     * (N = urutan approver berikutnya) yang dipakai template saat ini.
+     */
+    private function getSignaturePlaceholders(string $userRole, string $userUnitCategory, int $approverIndex): array
     {
-        if ($userUnitCategory === 'SENAT' && ($userRole === 'ketua-ormawa' || $userRole === 'senat')) {
-            return ['ttd_ketua_senat', 'signature_ketua_senat', 'ttd_ketuasenat'];
+        $placeholders = [];
+
+        if ($userUnitCategory === 'SENAT' && in_array($userRole, ['ketua-ormawa', 'senat'])) {
+            $placeholders = ['ttd_ketua_senat', 'signature_ketua_senat', 'ttd_ketuasenat'];
+        } else {
+            $roleMap = [
+                'sekretaris' => ['ttd_sekretaris', 'signature_sekretaris'],
+                'ketua-ormawa' => ['ttd_ketua_ormawa', 'signature_ketua_ormawa', 'ttd_ketua_panitia', 'signature_ketua_panitia'],
+                'dosen-pendamping' => ['ttd_dosen_pendamping', 'signature_dosen_pendamping'],
+                'senat' => ['ttd_ketua_senat', 'signature_ketua_senat'],
+                'ketua-departemen' => ['ttd_ketua_departemen', 'signature_ketua_departemen'],
+                'kemahasiswaan' => ['ttd_kemahasiswaan', 'signature_kemahasiswaan'],
+                'wadek1' => ['ttd_wadek1', 'signature_wadek1'],
+                'sumber-daya' => ['ttd_sumber_daya', 'signature_sumber_daya'],
+            ];
+            $placeholders = $roleMap[$userRole] ?? [];
         }
 
-        switch ($userRole) {
-            case 'sekretaris':
-                return ['ttd_sekretaris', 'signature_sekretaris'];
-            case 'ketua-ormawa':
-                return ['ttd_ketua', 'signature_ketua', 'ttd_ketuaormawa'];
-            case 'pembina':
-                return ['ttd_pembina', 'signature_pembina'];
-            case 'kemahasiswaan':
-                return ['ttd_kemahasiswaan', 'signature_kemahasiswaan'];
-            case 'wd3':
-            case 'wakil-dekan':
-                return ['ttd_wd3', 'signature_wd3', 'ttd_wakildekan'];
-            case 'dekan':
-                return ['ttd_dekan', 'signature_dekan'];
-            default:
-                return ['signature_approver_1', 'signature_approver_2', 'signature_approver_3'];
-        }
+        $placeholders[] = "signature_approver_{$approverIndex}";
+        $placeholders[] = "ttd_approver_{$approverIndex}";
+
+        return $placeholders;
     }
 
     public function updateDocument(Document $document, User $user, Request $request): Document
@@ -915,14 +1032,6 @@ class DocumentService
 
     public function mapCategoryToOrganizationType($category): string
     {
-        $mapping = [
-            'HMD' => 'hmd',
-            'BEM' => 'bem_ukm',
-            'SENAT' => 'senat',
-            'Senat' => 'senat',
-            'UKM' => 'bem_ukm',
-        ];
-
-        return $mapping[$category] ?? 'hmd';
+        return DocumentGenerationService::organizationTypeForCategory($category);
     }
 }
