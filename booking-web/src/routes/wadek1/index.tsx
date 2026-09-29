@@ -83,7 +83,7 @@ function RouteComponent() {
       bgLight: 'bg-green-50',
       onClick: () => navigate({ to: '/wadek1/riwayat-persetujuan' }),
     },
-  ], [approvalItems, uniqueSubmittersCount, navigate]);
+  ], [approvalItems, uniqueSubmittersCount, approvedCount, navigate]);
 
   const handleApprove = useCallback((id: number) => {
     setDialogState({ type: 'approve', id });
@@ -120,7 +120,7 @@ function RouteComponent() {
       setActionLoading(false);
       setDialogState({ type: null, id: null });
     }
-  }, [dialogState.id]);
+  }, [dialogState.id, fetchDocuments]);
 
   const handleOpenDoc = useCallback((documentId: number) => {
     navigate({

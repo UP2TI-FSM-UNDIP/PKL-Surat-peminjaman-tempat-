@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AxiosError } from 'axios';
 import {
   FileText,
@@ -47,11 +47,7 @@ function RouteComponent() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  useEffect(() => {
-    fetchTemplate();
-  }, [templateId]);
-
-  const fetchTemplate = async () => {
+  const fetchTemplate = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -73,7 +69,11 @@ function RouteComponent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [templateId]);
+
+  useEffect(() => {
+    fetchTemplate();
+  }, [fetchTemplate]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

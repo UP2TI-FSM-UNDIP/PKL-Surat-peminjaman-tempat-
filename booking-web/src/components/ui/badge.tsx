@@ -36,4 +36,6 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   );
 }
 
+// Komponen dan helper/hook-nya sengaja diekspor dari file yang sama (hanya memengaruhi fast refresh saat development).
+// eslint-disable-next-line react-refresh/only-export-components
 export { Badge, badgeVariants };

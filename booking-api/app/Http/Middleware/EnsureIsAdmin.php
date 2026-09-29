@@ -9,10 +9,14 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureIsAdmin
 {
     /**
-     * Handle an incoming request.
-     * Pastikan user memiliki role admin atau unit kategori FAKULTAS.
+     * Izinkan admin, plus role lain yang disebut eksplisit di route,
+     * mis. ->middleware('admin:sumber-daya,kemahasiswaan').
+     *
+     * Sebelumnya semua user di unit kategori FAKULTAS diloloskan, sehingga
+     * mahasiswa/staf non-admin yang terdaftar di unit Fakultas ikut punya
+     * akses admin.
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, string ...$allowedRoles): Response
     {
         $user = $request->user();
 
@@ -23,10 +27,10 @@ class EnsureIsAdmin
             ], 401);
         }
 
-        $isAdmin = $user->role?->slug === 'admin'
-            || $user->unit?->category === 'FAKULTAS';
+        $roleSlug = $user->role?->slug;
+        $isAllowed = $user->isAdmin() || ($roleSlug && in_array($roleSlug, $allowedRoles, true));
 
-        if (!$isAdmin) {
+        if (!$isAllowed) {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki akses untuk melakukan aksi ini'

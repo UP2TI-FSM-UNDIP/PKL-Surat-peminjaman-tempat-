@@ -4,6 +4,7 @@ import api from '@/lib/axios';
 import { documentService } from '@/services/document.service';
 import type { CreateDocumentData } from '@/types/document';
 import { Button } from '@/components/ui/button/button';
+import { getErrorMessage, getValidationErrors } from '@/lib/errors';
 
 export const Route = createFileRoute('/peminjam/pinjam/ajukan/')({
   component: RouteComponent,
@@ -116,16 +117,13 @@ export default function RouteComponent() {
       // 3. Sukses & Navigasi
       setSuccess('Dokumen berhasil dibuat');
       navigate({ to: '/peminjam/pinjam', search: { status: 'ALL' } });
-    } catch (err: any) {
+    } catch (err) {
       console.error('createDocument error:', err);
 
       // Ekstraksi pesan error dari backend
-      const backendMessage = err?.response?.data?.message;
-      const validationErrors = err?.response?.data?.errors
-        ? Object.values(err.response.data.errors).flat().join(', ')
-        : null;
-
-      setError(backendMessage || validationErrors || 'Gagal membuat dokumen.');
+      setError(
+        getErrorMessage(err, '') || getValidationErrors(err) || 'Gagal membuat dokumen.',
+      );
     } finally {
       setSubmitting(false);
     }

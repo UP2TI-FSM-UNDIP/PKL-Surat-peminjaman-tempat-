@@ -196,7 +196,7 @@ function WorkflowRow({
               size='sm'
               onClick={() => onDelete(workflow)}
               className='h-7 w-7 p-0 sm:h-8 sm:w-8'
-              title='Delete'
+              title='Hapus'
             >
               <Trash2 className='h-3 w-3 sm:h-4 sm:w-4 text-red-500' />
             </Button>

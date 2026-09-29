@@ -1,4 +1,5 @@
 import api from '@/lib/axios';
+import { getErrorStatus } from '@/lib/errors';
 
 export interface Signature {
   id: number;
@@ -28,9 +29,9 @@ class SignatureService {
     try {
       const response = await api.get<SignatureResponse>('/signs');
       return response.data.data || null;
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ [SignatureService] Error fetching signature:', error);
-      if (error.response?.status === 404) {
+      if (getErrorStatus(error) === 404) {
         return null;
       }
       throw error;
@@ -94,8 +95,8 @@ class SignatureService {
       });
       const blob = response.data;
       return URL.createObjectURL(blob);
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error) {
+      if (getErrorStatus(error) === 404) {
         return null;
       }
       throw error;

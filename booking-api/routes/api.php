@@ -44,6 +44,11 @@ if (app()->environment('local', 'development')) {
     });
 }
 
+// Public: verifikasi bukti peminjaman dari QR code (butuh token di URL)
+Route::get('/room-bookings/{id}/verify', [RoomBookingController::class, 'verify'])
+    ->whereNumber('id')
+    ->middleware('throttle:30,1');
+
 // Public Room Image Route (Accessed by <img> tags)
 Route::get('/rooms/{id}/image', 'App\Http\Controllers\RoomController@serveImage')->name('api.rooms.image');
 
@@ -53,36 +58,36 @@ Route::middleware('auth:sanctum')->group(function () {
     // =============================================
     // ADMIN-ONLY ROUTES
     // =============================================
-    Route::middleware('admin')->group(function () {
-        // Admin Dashboard
-        Route::prefix('admin/dashboard')->group(function () {
-            Route::get('/stats', [App\Http\Controllers\Admin\DashboardController::class, 'stats']);
-        });
+    // Admin selalu diizinkan; role lain disebut eksplisit sesuai tugasnya.
 
-        // Document Template Management (Upload, Edit, Delete, Activate)
-        Route::prefix('document-templates')->group(function () {
-            Route::post('/', [DocumentTemplateController::class, 'store']);                   // Upload template
-            Route::post('/{id}', [DocumentTemplateController::class, 'update']);              // Update template
-            Route::put('/{id}/placeholder-metadata', [DocumentTemplateController::class, 'updatePlaceholderMetadata']);
-            Route::patch('/{id}/activate', [DocumentTemplateController::class, 'activate']);
-            Route::patch('/{id}/deactivate', [DocumentTemplateController::class, 'deactivate']);
-            Route::delete('/{id}', [DocumentTemplateController::class, 'destroy']);
-        });
+    // Admin Dashboard (juga dipakai dashboard Sumber Daya)
+    Route::middleware('admin:sumber-daya')->prefix('admin/dashboard')->group(function () {
+        Route::get('/stats', [App\Http\Controllers\Admin\DashboardController::class, 'stats']);
+    });
 
-        // Room Management (Create, Update, Delete, Upload Image)
-        Route::prefix('rooms')->group(function () {
-            Route::post('/', [RoomController::class, 'store']);
-            Route::put('/{id}', [RoomController::class, 'update']);
-            Route::delete('/{id}', [RoomController::class, 'destroy']);
-            Route::post('/{id}/upload-image', [RoomController::class, 'uploadImage']);
-            Route::delete('/{id}/images', [RoomController::class, 'deleteImage']);
-        });
+    // Document Template Management (Upload, Edit, Delete, Activate) — dikelola Kemahasiswaan
+    Route::middleware('admin:kemahasiswaan')->prefix('document-templates')->group(function () {
+        Route::post('/', [DocumentTemplateController::class, 'store']);                   // Upload template
+        Route::post('/{id}', [DocumentTemplateController::class, 'update']);              // Update template
+        Route::put('/{id}/placeholder-metadata', [DocumentTemplateController::class, 'updatePlaceholderMetadata']);
+        Route::patch('/{id}/activate', [DocumentTemplateController::class, 'activate']);
+        Route::patch('/{id}/deactivate', [DocumentTemplateController::class, 'deactivate']);
+        Route::delete('/{id}', [DocumentTemplateController::class, 'destroy']);
+    });
 
-        // Booking Admin Actions (Approve / Reject)
-        Route::prefix('room-bookings')->group(function () {
-            Route::post('/{id}/approve', [RoomBookingController::class, 'approve']);
-            Route::post('/{id}/reject', [RoomBookingController::class, 'reject']);
-        });
+    // Room Management (Create, Update, Delete, Upload Image) — dikelola Sumber Daya
+    Route::middleware('admin:sumber-daya')->prefix('rooms')->group(function () {
+        Route::post('/', [RoomController::class, 'store']);
+        Route::put('/{id}', [RoomController::class, 'update']);
+        Route::delete('/{id}', [RoomController::class, 'destroy']);
+        Route::post('/{id}/upload-image', [RoomController::class, 'uploadImage']);
+        Route::delete('/{id}/images', [RoomController::class, 'deleteImage']);
+    });
+
+    // Booking Admin Actions (Approve / Reject)
+    Route::middleware('admin:sumber-daya')->prefix('room-bookings')->group(function () {
+        Route::post('/{id}/approve', [RoomBookingController::class, 'approve']);
+        Route::post('/{id}/reject', [RoomBookingController::class, 'reject']);
     });
 
     // =============================================

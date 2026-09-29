@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Upload, Trash2, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button/button';
 import { signatureService } from '@/services/signature.service';
 import type { Signature } from '@/services/signature.service';
+import { getErrorMessage, getErrorStatus } from '@/lib/errors';
 
 interface SignatureUploadProps {
   onSignatureUploaded?: (signature: Signature) => void;
@@ -29,14 +30,14 @@ export function SignatureUpload({
   // Coerce to number; keep NaN if missing so comparisons are numeric
   const currentUserId = Number(localStorage.getItem('userId'));
 
+  // Revoke object URL terakhir saat komponen di-unmount
   useEffect(() => {
-    loadExistingSignature();
     return () => {
       // revoke any created object URL on unmount
       if (prevBlobUrl.current) {
         try {
           URL.revokeObjectURL(prevBlobUrl.current);
-        } catch (e) {
+        } catch {
           /* ignore */
         }
         prevBlobUrl.current = null;
@@ -44,27 +45,22 @@ export function SignatureUpload({
     };
   }, []);
 
-  const updateSignatureUrl = (url: string | null) => {
+  const updateSignatureUrl = useCallback((url: string | null) => {
     if (prevBlobUrl.current && prevBlobUrl.current !== url) {
       try {
         URL.revokeObjectURL(prevBlobUrl.current);
-      } catch (e) {
+      } catch {
         /* ignore */
       }
     }
     prevBlobUrl.current = url;
     setSignatureUrl(url);
-  };
+  }, []);
 
-  const loadExistingSignature = async () => {
+  const loadExistingSignature = useCallback(async () => {
     try {
       setLoading(true);
       const signature = await signatureService.getSignature();
-      // Debug: log returned signature and current user id to help diagnose preview issues
-      console.debug('SignatureUpload.loadExistingSignature', {
-        signature,
-        currentUserId,
-      });
       // Ensure the returned signature belongs to the current authenticated user
       if (signature && Number(signature.user_id) === currentUserId) {
         setExistingSignature(signature);
@@ -77,16 +73,20 @@ export function SignatureUpload({
         setExistingSignature(null);
         setSignatureUrl(null);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to load signature:', error);
-      if (error.response?.status === 404) {
+      if (getErrorStatus(error) === 404) {
         setExistingSignature(null);
         setSignatureUrl(null);
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUserId, updateSignatureUrl]);
+
+  useEffect(() => {
+    loadExistingSignature();
+  }, [loadExistingSignature]);
 
   const handleClear = () => {
     sigCanvas.current?.clear();
@@ -129,9 +129,9 @@ export function SignatureUpload({
 
       setMode('view');
       onSignatureUploaded?.(signature);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to save signature:', error);
-      alert(error.response?.data?.message || 'Gagal menyimpan tanda tangan');
+      alert(getErrorMessage(error, 'Gagal menyimpan tanda tangan'));
     } finally {
       setLoading(false);
     }
@@ -174,9 +174,9 @@ export function SignatureUpload({
 
       setMode('view');
       onSignatureUploaded?.(signature);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to upload signature:', error);
-      alert(error.response?.data?.message || 'Gagal mengunggah tanda tangan');
+      alert(getErrorMessage(error, 'Gagal mengunggah tanda tangan'));
     } finally {
       setLoading(false);
     }
@@ -194,9 +194,9 @@ export function SignatureUpload({
       await signatureService.deleteSignature(existingSignature.id);
       setExistingSignature(null);
       setSignatureUrl(null);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to delete signature:', error);
-      alert(error.response?.data?.message || 'Gagal menghapus tanda tangan');
+      alert(getErrorMessage(error, 'Gagal menghapus tanda tangan'));
     } finally {
       setLoading(false);
     }

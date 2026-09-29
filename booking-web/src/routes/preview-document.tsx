@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -55,14 +55,11 @@ export function DocumentPreviewContent({
     type: 'approve' | 'revise' | null;
   }>({ type: null });
 
-  useEffect(() => {
-    if (documentId) {
-      loadDocumentPreview(selectedDocType);
-      loadDocument();
-    }
-  }, [documentId, selectedDocType]);
+  // URL blob PDF yang sedang ditampilkan (ref, agar bisa di-revoke tanpa
+  // membuat fungsi load berubah setiap kali preview baru dimuat)
+  const pdfUrlRef = useRef<string | null>(null);
 
-  const loadDocument = async () => {
+  const loadDocument = useCallback(async () => {
     if (!documentId) return;
 
     try {
@@ -71,17 +68,18 @@ export function DocumentPreviewContent({
     } catch (err) {
       console.error('Failed to load document:', err);
     }
-  };
+  }, [documentId]);
 
-  const loadDocumentPreview = async (docType: DocumentType) => {
+  const loadDocumentPreview = useCallback(async (docType: DocumentType) => {
     if (!documentId) return;
 
     try {
       setLoading(true);
       setError(null);
       // Clean up previous URL
-      if (pdfUrl) {
-        window.URL.revokeObjectURL(pdfUrl);
+      if (pdfUrlRef.current) {
+        window.URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
       }
 
       const response = await api.get(
@@ -93,6 +91,7 @@ export function DocumentPreviewContent({
 
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
+      pdfUrlRef.current = url;
       setPdfUrl(url);
     } catch (err) {
       console.error('Failed to load document preview:', err);
@@ -106,7 +105,22 @@ export function DocumentPreviewContent({
     } finally {
       setLoading(false);
     }
-  };
+  }, [documentId]);
+
+  useEffect(() => {
+    loadDocument();
+  }, [loadDocument]);
+
+  useEffect(() => {
+    loadDocumentPreview(selectedDocType);
+  }, [loadDocumentPreview, selectedDocType]);
+
+  // Revoke URL blob saat halaman ditutup
+  useEffect(() => {
+    return () => {
+      if (pdfUrlRef.current) window.URL.revokeObjectURL(pdfUrlRef.current);
+    };
+  }, []);
 
   const handleApprove = () => {
     setDialogState({ type: 'approve' });
@@ -122,7 +136,7 @@ export function DocumentPreviewContent({
         '',
         'Disetujui melalui preview',
       );
-      navigate({ to: returnPath as any });
+      navigate({ to: returnPath });
     } catch (err) {
       console.error('Failed to approve document:', err);
       const axiosError = err as AxiosError<{ message?: string }>;
@@ -149,7 +163,7 @@ export function DocumentPreviewContent({
         document.creator_id,
         note,
       );
-      navigate({ to: returnPath as any });
+      navigate({ to: returnPath });
     } catch (err) {
       console.error('Failed to revise document:', err);
       const error = err as AxiosError<{ message?: string }>;
@@ -255,7 +269,7 @@ export function DocumentPreviewContent({
 
       <div className='mt-6 flex justify-end'>
         <Button
-          onClick={() => navigate({ to: returnPath as any })}
+          onClick={() => navigate({ to: returnPath })}
           variant='outline'
         >
           Kembali

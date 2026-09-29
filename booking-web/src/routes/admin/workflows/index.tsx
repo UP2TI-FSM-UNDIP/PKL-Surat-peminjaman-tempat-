@@ -397,7 +397,7 @@ function RouteComponent() {
     return (
       <div className='container mx-auto p-6'>
         <div className='flex items-center justify-center h-64'>
-          <div className='text-lg'>Loading workflows...</div>
+          <div className='text-lg'>Memuat data alur...</div>
         </div>
       </div>
     );
@@ -502,7 +502,7 @@ function RouteComponent() {
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Workflow</DialogTitle>
+            <DialogTitle>Edit Alur</DialogTitle>
             <DialogDescription>Update informasi workflow</DialogDescription>
           </DialogHeader>
           <div className='space-y-4 py-4'>

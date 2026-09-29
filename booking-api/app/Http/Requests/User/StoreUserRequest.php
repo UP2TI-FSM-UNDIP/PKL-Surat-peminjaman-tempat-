@@ -9,7 +9,8 @@ class StoreUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        // Hanya admin; dicek sebelum validasi agar non-admin langsung ditolak (403)
+        return (bool) $this->user()?->isAdmin();
     }
 
     public function rules(): array

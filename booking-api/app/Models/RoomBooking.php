@@ -179,6 +179,29 @@ class RoomBooking extends Model
     }
 
     /**
+     * Token verifikasi untuk QR code bukti peminjaman. Berupa HMAC dari id
+     * booking, sehingga halaman verifikasi publik tidak bisa diakses dengan
+     * sekadar menebak id.
+     */
+    public function verificationToken(): string
+    {
+        return substr(hash_hmac('sha256', 'room-booking-verify:' . $this->id, (string) config('app.key')), 0, 32);
+    }
+
+    public function isValidVerificationToken(?string $token): bool
+    {
+        return is_string($token) && hash_equals($this->verificationToken(), $token);
+    }
+
+    /**
+     * URL halaman verifikasi di frontend (isi QR code).
+     */
+    public function verificationUrl(): string
+    {
+        return config('app.frontend_url') . "/verifikasi/{$this->id}?token=" . $this->verificationToken();
+    }
+
+    /**
      * Get duration in hours
      */
     public function getDurationInHours(): float

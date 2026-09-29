@@ -240,7 +240,7 @@ export function useReservation(searchParams: ReservationSearchParams) {
 
             // 2. Check for duplicate draft reservations
             const existingDocs = await documentService.getDocuments();
-            const hasDuplicate = existingDocs.my_documents?.some((doc: any) => {
+            const hasDuplicate = existingDocs.my_documents?.some((doc) => {
                 const content = doc.content || {};
                 const metaData = doc.meta_data || {};
                 return (

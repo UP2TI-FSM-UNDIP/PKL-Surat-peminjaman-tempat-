@@ -12,7 +12,7 @@ class UserService
         $query = User::with(['role', 'unit']);
 
         // Admin bisa lihat semua, user biasa hanya lihat user di unit yang sama
-        if ($authUser->unit?->category !== 'FAKULTAS' && $authUser->role?->slug !== 'admin') {
+        if (!$authUser->isAdmin()) {
             $query->where('unit_id', $authUser->unit_id);
         }
 

@@ -436,4 +436,109 @@ class WorkflowEndToEndTest extends TestCase
         $this->assertSame('PENDING', RoomBooking::where('document_id', $inProgressId)->sole()->status);
         $this->assertSame('CANCELLED', RoomBooking::where('document_id', $draftId)->sole()->status);
     }
+
+    // ------------------------------------------------ hak akses & QR code
+
+    private function fsmStudentSekretaris(): User
+    {
+        return User::create([
+            'name' => 'Sekretaris Salah Unit', 'email' => 'salah-unit-e2e@example.test', 'password' => bcrypt('x'),
+            'role_id' => Role::where('slug', 'sekretaris')->value('id'), 'unit_id' => Unit::where('code', 'FSM')->value('id'),
+        ]);
+    }
+
+    public function test_user_unit_fakultas_non_admin_tidak_punya_akses_admin(): void
+    {
+        Sanctum::actingAs($this->fsmStudentSekretaris());
+
+        // Tidak bisa menaikkan role dirinya / membuat pengguna / mengubah master data
+        $adminRoleId = Role::where('slug', 'admin')->value('id');
+        $this->putJson('/api/users/' . auth()->id(), ['role_id' => $adminRoleId])->assertForbidden();
+        $this->postJson('/api/users', [
+            'name' => 'X', 'email' => 'x-e2e@example.test', 'password' => 'Password123!',
+            'role_id' => $adminRoleId, 'unit_id' => Unit::where('code', 'FSM')->value('id'),
+        ])->assertForbidden();
+        $this->postJson('/api/units', ['name' => 'X', 'code' => 'X-E2E', 'category' => 'HMD'])->assertForbidden();
+        $this->postJson('/api/roles', ['name' => 'X', 'slug' => 'x-e2e'])->assertForbidden();
+        $this->postJson('/api/workflows', ['name' => 'X', 'applies_to_category' => 'HMD'])->assertForbidden();
+
+        // Route admin
+        $this->postJson('/api/rooms', ['name' => 'X', 'code' => 'X-E2E', 'capacity' => 10])->assertForbidden();
+        $this->getJson('/api/admin/dashboard/stats')->assertForbidden();
+        $this->patchJson('/api/document-templates/1/activate')->assertForbidden();
+
+        $this->assertSame('sekretaris', User::find(auth()->id())->role->slug);
+    }
+
+    public function test_staf_fakultas_hanya_mendapat_akses_sesuai_tugasnya(): void
+    {
+        // Sumber Daya: kelola ruangan & statistik dashboard, bukan template
+        Sanctum::actingAs($this->user('sumber-daya', 'FSM'));
+        $this->getJson('/api/admin/dashboard/stats')->assertOk();
+        $this->postJson('/api/rooms', ['name' => 'Ruang E2E', 'code' => 'R-E2E', 'capacity' => 20, 'status' => 'ACTIVE'])->assertSuccessful();
+        $this->patchJson('/api/document-templates/999999/activate')->assertForbidden();
+
+        // Kemahasiswaan: kelola template (lolos middleware -> 404 karena id tidak ada), bukan ruangan
+        Sanctum::actingAs($this->user('kemahasiswaan', 'FSM'));
+        $this->patchJson('/api/document-templates/999999/activate')->assertNotFound();
+        $this->postJson('/api/rooms', ['name' => 'X', 'code' => 'X-E2E-2', 'capacity' => 10])->assertForbidden();
+
+        // Admin tetap bisa semuanya
+        Sanctum::actingAs($this->user('admin', 'FSM'));
+        $this->getJson('/api/admin/dashboard/stats')->assertOk();
+    }
+
+    public function test_qr_code_dan_halaman_verifikasi_bukti_peminjaman(): void
+    {
+        $this->signAllApprovers();
+        [$docId, $creator] = $this->submittedHmdDocument(4);
+        $booking = RoomBooking::where('document_id', $docId)->sole();
+
+        // Belum disetujui -> QR belum tersedia
+        Sanctum::actingAs($creator);
+        $this->get("/api/room-bookings/{$booking->id}/qrcode")->assertStatus(400);
+
+        $this->approveUntilDone($docId);
+
+        $this->get("/api/room-bookings/{$booking->id}/qrcode")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
+
+        // Pengguna lain yang tidak terlibat tidak bisa mengambil QR (isi QR memuat token verifikasi).
+        // (Ketua Ormawa Senat tidak dipakai di sini karena ia ikut menyetujui dokumen ini.)
+        Sanctum::actingAs($this->user('ketua-ormawa', 'HMMATH'));
+        $this->get("/api/room-bookings/{$booking->id}/qrcode")->assertForbidden();
+
+        // Halaman verifikasi publik: tanpa login, wajib token yang benar
+        $this->app['auth']->forgetGuards();
+        $token = $booking->fresh()->verificationToken();
+        $this->assertStringContainsString("/verifikasi/{$booking->id}?token={$token}", $booking->verificationUrl());
+
+        $res = $this->getJson("/api/room-bookings/{$booking->id}/verify?token={$token}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'APPROVED')
+            ->assertJsonPath('data.day', 'Sabtu');
+        $this->assertEqualsCanonicalizing(
+            ['id', 'status', 'room', 'booking_date', 'day', 'start_time', 'end_time', 'purpose', 'event_name', 'unit', 'approved_by', 'approved_at'],
+            array_keys($res->json('data')),
+            'Hanya data verifikasi, tanpa data pribadi'
+        );
+
+        $this->getJson("/api/room-bookings/{$booking->id}/verify?token=salah")->assertNotFound();
+        $this->getJson("/api/room-bookings/{$booking->id}/verify")->assertNotFound();
+        $this->getJson('/api/room-bookings/' . ($booking->id + 1000) . "/verify?token={$token}")->assertNotFound();
+    }
+
+    public function test_pesan_dan_tanggal_berbahasa_indonesia_zona_waktu_wib(): void
+    {
+        $this->assertSame('Asia/Jakarta', config('app.timezone'));
+        $this->assertSame('id', app()->getLocale());
+
+        // Pesan bawaan (tanpa pesan kustom) memakai lang/id + nama atribut Indonesia
+        $this->assertSame(
+            'Tanggal peminjaman wajib diisi.',
+            validator(['booking_date' => ''], ['booking_date' => 'required'])->errors()->first()
+        );
+        $this->assertSame('Sabtu, 10 Oktober 2026', Carbon::parse('2026-10-10')->translatedFormat('l, d F Y'));
+    }
 }

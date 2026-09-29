@@ -36,7 +36,7 @@ export function UserDetailModal({ open, onOpenChange, user }: Props) {
           <div className='flex items-start justify-between gap-4'>
             <div>
               <Dialog.Title className='text-lg font-semibold'>
-                Detail User
+                Detail Pengguna
               </Dialog.Title>
               <Dialog.Description className='text-sm text-gray-500'>
                 Informasi lengkap mengenai user

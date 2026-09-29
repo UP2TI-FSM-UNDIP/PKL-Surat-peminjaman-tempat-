@@ -54,7 +54,7 @@ class UnitController extends Controller
         // Pastikan hanya admin yang bisa membuat unit
         $user = $request->user();
         abort_if(
-            $user->unit?->category !== 'FAKULTAS' && $user->role?->slug !== 'admin',
+            !$user->isAdmin(),
             403,
             'Hanya admin yang dapat membuat unit'
         );
@@ -78,7 +78,7 @@ class UnitController extends Controller
         // Pastikan hanya admin yang bisa mengupdate unit
         $user = $request->user();
         abort_if(
-            $user->unit?->category !== 'FAKULTAS' && $user->role?->slug !== 'admin',
+            !$user->isAdmin(),
             403,
             'Hanya admin yang dapat mengupdate unit'
         );
@@ -104,7 +104,7 @@ class UnitController extends Controller
         // Pastikan hanya admin yang bisa menghapus unit
         $user = $request->user();
         abort_if(
-            $user->unit?->category !== 'FAKULTAS' && $user->role?->slug !== 'admin',
+            !$user->isAdmin(),
             403,
             'Hanya admin yang dapat menghapus unit'
         );

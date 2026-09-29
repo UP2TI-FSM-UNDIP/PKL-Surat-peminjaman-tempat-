@@ -90,7 +90,7 @@ function RouteComponent() {
 
       performAutoApprove();
     }
-  }, [autoApprove, documentId]);
+  }, [autoApprove, documentId, fetchDocuments, navigate]);
 
   const tableRef = useRef<HTMLDivElement>(null);
 

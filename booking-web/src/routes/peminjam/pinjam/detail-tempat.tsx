@@ -25,7 +25,7 @@ export const Route = createFileRoute('/peminjam/pinjam/detail-tempat')({
   beforeLoad: async () => {
     try {
       await authService.getUser();
-    } catch (error) {
+    } catch {
       throw redirect({ to: '/' });
     }
   },

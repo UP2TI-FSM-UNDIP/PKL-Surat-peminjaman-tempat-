@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AxiosError } from 'axios';
 import { userService, type User } from '@/services/user.service';
 import { roleService, type Role } from '@/services/role.service';
@@ -40,6 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { UpdateUserData } from '@/services/user.service';
 
 export const Route = createFileRoute('/admin/users/')({
   component: RouteComponent,
@@ -94,7 +95,9 @@ function RouteComponent() {
     setCurrentPage(1);
   }, [debouncedSearchQuery, selectedRoleId, selectedUnitId]);
 
-  const fetchData = async () => {
+  // Daftar pengguna (mengikuti halaman & filter). Juga dipanggil ulang setelah
+  // tambah/ubah/hapus pengguna.
+  const fetchData = useCallback(async () => {
     try {
       setIsFetching(true);
       setError(null);
@@ -112,16 +115,6 @@ function RouteComponent() {
       setCurrentPage(response.meta.current_page);
       setTotalPages(response.meta.last_page);
       setTotalItems(response.meta.total);
-
-      // Fetch roles and units (only if empty)
-      if (roles.length === 0 || units.length === 0) {
-        const [rolesData, unitsData] = await Promise.all([
-          roleService.getRoles(),
-          unitService.getUnits(),
-        ]);
-        setRoles(rolesData);
-        setUnits(unitsData);
-      }
     } catch (err) {
       console.error('Failed to fetch data:', err);
       const error = err as AxiosError<{ message: string }>;
@@ -133,11 +126,21 @@ function RouteComponent() {
       setIsFetching(false);
       setIsInitialLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearchQuery, selectedRoleId, selectedUnitId]);
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, debouncedSearchQuery, selectedRoleId, selectedUnitId]);
+  }, [fetchData]);
+
+  // Pilihan role & unit untuk filter/form cukup dimuat sekali
+  useEffect(() => {
+    Promise.all([roleService.getRoles(), unitService.getUnits()])
+      .then(([rolesData, unitsData]) => {
+        setRoles(rolesData);
+        setUnits(unitsData);
+      })
+      .catch((err) => console.error('Failed to fetch roles/units:', err));
+  }, []);
 
   const handleCreate = () => {
     setFormData({
@@ -217,7 +220,7 @@ function RouteComponent() {
 
     try {
       setIsSubmitting(true);
-      const updateData: any = {
+      const updateData: UpdateUserData = {
         name: formData.name,
         email: formData.email,
         role_id: formData.role_id,
@@ -266,7 +269,7 @@ function RouteComponent() {
       <div className='flex items-center justify-center min-h-[400px]'>
         <div className='text-center'>
           <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto'></div>
-          <p className='mt-4 text-gray-600 font-medium'>Memuat data user...</p>
+          <p className='mt-4 text-gray-600 font-medium'>Memuat data pengguna...</p>
         </div>
       </div>
     );
@@ -288,7 +291,7 @@ function RouteComponent() {
       {/* Header */}
       <div className='mb-4 sm:mb-6'>
         <h1 className='text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2'>
-          Manajemen User
+          Manajemen Pengguna
         </h1>
         <p className='text-sm sm:text-base text-gray-600'>
           Kelola pengguna sistem peminjaman ruang
@@ -313,7 +316,7 @@ function RouteComponent() {
             className='whitespace-nowrap h-11 px-6 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm flex items-center gap-2'
           >
             <Plus className='h-5 w-5' />
-            <span>Tambah User</span>
+            <span>Tambah Pengguna</span>
           </Button>
         </div>
         <div className='flex flex-row gap-2'>
@@ -538,7 +541,7 @@ function RouteComponent() {
         <DialogContent className='sm:max-w-125'>
           <form onSubmit={handleSubmitCreate}>
             <DialogHeader>
-              <DialogTitle>Tambah User Baru</DialogTitle>
+              <DialogTitle>Tambah Pengguna Baru</DialogTitle>
               <DialogDescription>
                 Masukkan informasi user yang akan ditambahkan
               </DialogDescription>
@@ -656,7 +659,7 @@ function RouteComponent() {
         <DialogContent className='sm:max-w-125'>
           <form onSubmit={handleSubmitEdit}>
             <DialogHeader>
-              <DialogTitle>Edit User</DialogTitle>
+              <DialogTitle>Edit Pengguna</DialogTitle>
               <DialogDescription>
                 Ubah informasi user yang dipilih
               </DialogDescription>
@@ -772,7 +775,7 @@ function RouteComponent() {
       <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
         <DialogContent className='sm:max-w-125'>
           <DialogHeader>
-            <DialogTitle>Detail User</DialogTitle>
+            <DialogTitle>Detail Pengguna</DialogTitle>
             <DialogDescription>
               Informasi lengkap tentang user
             </DialogDescription>
@@ -862,7 +865,7 @@ function RouteComponent() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus User</AlertDialogTitle>
+            <AlertDialogTitle>Hapus Pengguna</AlertDialogTitle>
             <AlertDialogDescription>
               Apakah Anda yakin ingin menghapus user{' '}
               <strong>{selectedUser?.name}</strong>? Tindakan ini tidak dapat

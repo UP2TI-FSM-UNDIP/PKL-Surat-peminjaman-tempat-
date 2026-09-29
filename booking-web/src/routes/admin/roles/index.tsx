@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import type { User } from '@/services/user.service';
 
 export const Route = createFileRoute('/admin/roles/')({
   component: RouteComponent,
@@ -53,7 +54,7 @@ function RouteComponent() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
 
   // Detail modal states
-  const [roleUsers, setRoleUsers] = useState<any[]>([]);
+  const [roleUsers, setRoleUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
   // Form states

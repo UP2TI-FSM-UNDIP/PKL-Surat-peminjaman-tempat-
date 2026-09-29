@@ -62,7 +62,7 @@ export const menuConfigurations: Record<UserRole, MenuConfig> = {
         label: 'Konfigurasi',
         items: [
           {
-            title: 'Manajemen User',
+            title: 'Manajemen Pengguna',
             url: '/admin/users',
             icon: Users,
           },

@@ -136,6 +136,8 @@ const FormMessage = React.forwardRef<
 FormMessage.displayName = 'FormMessage';
 
 export {
+  // Hook sengaja diekspor bersama komponennya (hanya memengaruhi fast refresh saat development).
+  // eslint-disable-next-line react-refresh/only-export-components
   useFormField,
   Form,
   FormItem,

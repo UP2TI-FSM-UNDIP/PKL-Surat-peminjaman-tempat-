@@ -13,6 +13,7 @@ import { RoomForm } from '@/features/rooms/components/RoomForm';
 import { DetailRoomModal } from '@/features/rooms/components/DetailRoomModal';
 import { DeleteRoomDialog } from '@/features/rooms/components/DeleteRoomDialog';
 import { useRooms } from '@/features/rooms/hooks/useRooms';
+import type { Room } from '@/services/room.service';
 import {
   Table,
   TableBody,
@@ -146,7 +147,7 @@ function RouteComponent() {
                 key={status.id}
                 variant={selectedStatus === status.id ? 'default' : 'outline'}
                 size='sm'
-                onClick={() => setSelectedStatus(status.id as any)}
+                onClick={() => setSelectedStatus(status.id as Room['status'] | 'all')}
                 className={`h-9 px-4 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${selectedStatus === status.id
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'

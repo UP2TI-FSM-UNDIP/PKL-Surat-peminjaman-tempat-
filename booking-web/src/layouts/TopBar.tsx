@@ -46,7 +46,7 @@ export function TopBar({
   const handleLogout = async () => {
     try {
       await api.post('/logout');
-    } catch (e) {
+    } catch {
       // ignore network errors
     }
     localStorage.removeItem('token');

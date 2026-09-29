@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -38,10 +38,12 @@ export function RevisionDialog({
 }: RevisionDialogProps) {
     const [note, setNote] = useState('');
 
-    // Reset note when dialog closes
-    useEffect(() => {
+    // Reset note when dialog closes (disesuaikan saat render, bukan di effect)
+    const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+    if (isOpen !== prevIsOpen) {
+        setPrevIsOpen(isOpen);
         if (!isOpen) setNote('');
-    }, [isOpen]);
+    }
 
     const handleConfirm = () => {
         onConfirm(note);

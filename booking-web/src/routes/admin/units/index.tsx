@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { User } from '@/services/user.service';
 
 export const Route = createFileRoute('/admin/units/')({
   component: RouteComponent,
@@ -72,7 +73,7 @@ function RouteComponent() {
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [unitUsers, setUnitUsers] = useState<any[]>([]);
+  const [unitUsers, setUnitUsers] = useState<User[]>([]);
 
   // Debounce search query
   useEffect(() => {
@@ -341,7 +342,7 @@ function RouteComponent() {
                 key={cat.id}
                 variant={selectedCategory === cat.id ? 'default' : 'outline'}
                 size='sm'
-                onClick={() => setSelectedCategory(cat.id as any)}
+                onClick={() => setSelectedCategory(cat.id as 'all' | UnitCategory)}
                 className={`h-9 px-4 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${selectedCategory === cat.id
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'

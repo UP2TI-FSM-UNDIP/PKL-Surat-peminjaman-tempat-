@@ -37,10 +37,10 @@ function RouteComponent() {
     if (signature) {
       // Navigate back with success
       navigate({
-        to: returnPath as any,
+        to: returnPath,
         search: {
           autoApprove,
-        } as any,
+        },
       });
     }
   };
@@ -52,7 +52,7 @@ function RouteComponent() {
           <Button
             variant='ghost'
             size='sm'
-            onClick={() => navigate({ to: returnPath as any })}
+            onClick={() => navigate({ to: returnPath })}
           >
             <ArrowLeft className='h-4 w-4 mr-2' />
             Kembali
@@ -130,7 +130,7 @@ function RouteComponent() {
         <div className='flex gap-3 pt-4'>
           <Button
             variant='outline'
-            onClick={() => navigate({ to: returnPath as any })}
+            onClick={() => navigate({ to: returnPath })}
             className='flex-1'
           >
             Batal

@@ -31,16 +31,10 @@ function RouteComponent() {
   }>({ type: null, id: null });
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [dashboardStats, setDashboardStats] = useState<any>(null);
-
   // Fetch dashboard stats
-  const { } = useQuery({
+  const { data: dashboardStats } = useQuery({
     queryKey: ['dashboard-stats-sumber-daya'],
-    queryFn: async () => {
-      const data = await dashboardService.getStats();
-      setDashboardStats(data);
-      return data;
-    },
+    queryFn: () => dashboardService.getStats(),
   });
 
   // Fetch documents with server-side pagination
@@ -93,7 +87,7 @@ function RouteComponent() {
       bgLight: 'bg-green-50',
       onClick: () => navigate({ to: '/sumber-daya/riwayat-persetujuan' }),
     },
-  ], [approvalItems, dashboardStats, navigate, scrollToTable]);
+  ], [approvalItems, dashboardStats, approvedCount, navigate, scrollToTable]);
 
   const handleApprove = useCallback((id: number) => {
     setDialogState({ type: 'approve', id });

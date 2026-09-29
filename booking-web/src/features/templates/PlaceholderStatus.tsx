@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   CheckCircle,
   AlertTriangle,
   AlertCircle,
   Info,
   Save,
-  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +14,7 @@ import type {
   DocumentTemplate,
   PlaceholderMetadata,
 } from '@/types/template.types';
+import { getErrorMessage } from '@/lib/errors';
 
 interface PlaceholderStatusProps {
   template: DocumentTemplate;
@@ -25,12 +25,22 @@ export function PlaceholderStatus({
   template,
   onUpdate,
 }: PlaceholderStatusProps) {
-  const [placeholders, setPlaceholders] = useState<string[]>([]);
+  const [placeholders, setPlaceholders] = useState<string[]>(
+    template.detected_placeholders || [],
+  );
   const [metadata, setMetadata] = useState<Record<string, PlaceholderMetadata>>(
-    {},
+    template.placeholder_metadata || {},
   );
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Sinkronkan ulang saat template yang ditampilkan berganti
+  // (disesuaikan saat render, bukan lewat effect)
+  const [prevTemplate, setPrevTemplate] = useState(template);
+  if (template !== prevTemplate) {
+    setPrevTemplate(template);
+    setPlaceholders(template.detected_placeholders || []);
+    setMetadata(template.placeholder_metadata || {});
+  }
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -38,26 +48,6 @@ export function PlaceholderStatus({
     null,
   );
 
-  useEffect(() => {
-    loadData();
-  }, [template]);
-
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-
-      // Load available fields
-      await documentTemplateService.getAvailableFields();
-
-      // Set placeholders from template
-      setPlaceholders(template.detected_placeholders || []);
-      setMetadata(template.placeholder_metadata || {});
-    } catch (error) {
-      console.error('Failed to load placeholder data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSave = async () => {
     try {
@@ -76,11 +66,9 @@ export function PlaceholderStatus({
       if (onUpdate) {
         onUpdate();
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to save metadata:', error);
-      setSaveError(
-        error.response?.data?.message || 'Gagal menyimpan perubahan',
-      );
+      setSaveError(getErrorMessage(error, 'Gagal menyimpan perubahan'));
     } finally {
       setIsSaving(false);
     }
@@ -121,14 +109,6 @@ export function PlaceholderStatus({
 
   const available = placeholders.filter((p) => metadata[p]?.available);
   const unavailable = placeholders.filter((p) => !metadata[p]?.available);
-
-  if (isLoading) {
-    return (
-      <div className='flex items-center justify-center py-8'>
-        <RefreshCw className='w-6 h-6 animate-spin text-gray-400' />
-      </div>
-    );
-  }
 
   if (placeholders.length === 0) {
     return (

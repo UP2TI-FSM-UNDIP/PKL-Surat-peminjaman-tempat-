@@ -95,7 +95,7 @@ export function useSignaturePage() {
     });
 
     const handleSignatureUploaded = useCallback(
-        (_sig: Signature) => {
+        () => {
             refetchSignature();
         },
         [refetchSignature],

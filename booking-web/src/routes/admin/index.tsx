@@ -39,7 +39,7 @@ function RouteComponent() {
       icon: Clock,
       textColor: 'text-yellow-600',
       bgLight: 'bg-yellow-50',
-      onClick: () => navigate({ to: '/admin/peminjaman', search: { status: 'PENDING' } as any }),
+      onClick: () => navigate({ to: '/admin/peminjaman', search: { status: 'PENDING', search: '' } }),
     },
     {
       title: 'Total Ruangan Aktif',

@@ -47,21 +47,18 @@ function RouteComponent() {
 	const [endDate, setEndDate] = useState('');
 	const [activity, setActivity] = useState('');
 
+	// Muat daftar ruangan aktif sekali saat halaman dibuka
 	useEffect(() => {
-		fetchRooms();
+		roomService
+			.getRooms({ status: 'ACTIVE' })
+			.then((data) => {
+				setRooms(data);
+				if (data.length > 0) {
+					setSelectedRoom((prev) => prev || data[0].code);
+				}
+			})
+			.catch((err) => console.error('Failed to fetch rooms:', err));
 	}, []);
-
-	const fetchRooms = async () => {
-		try {
-			const data = await roomService.getRooms({ status: 'ACTIVE' });
-			setRooms(data);
-			if (data.length > 0 && !selectedRoom) {
-				setSelectedRoom(data[0].code);
-			}
-		} catch (err) {
-			console.error('Failed to fetch rooms:', err);
-		}
-	};
 
 	const getStatusBadge = (status: RoomBooking['status']) => {
 		const statusConfig = {
@@ -337,7 +334,7 @@ function RouteComponent() {
 								Status Peminjaman Ruang {selectedRoom}
 							</h2>
 							<div className='flex items-center gap-2 text-sm'>
-								<span className='text-gray-700'>Search:</span>
+								<span className='text-gray-700'>Cari:</span>
 								<Input
 									className='w-40'
 									value={search}
@@ -391,7 +388,7 @@ function RouteComponent() {
 							</div>
 
 							<div className='flex items-center justify-between px-4 py-3 border-t text-xs text-gray-500 bg-gray-50'>
-								<span>Showing {filteredBookings.length} entries</span>
+								<span>Menampilkan {filteredBookings.length} data</span>
 							</div>
 						</div>
 					</div>

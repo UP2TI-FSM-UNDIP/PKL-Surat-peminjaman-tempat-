@@ -56,6 +56,15 @@ class User extends Authenticatable
     }
 
     /**
+     * Apakah user ini admin sistem. Hak admin ditentukan oleh role, bukan oleh
+     * kategori unit (unit Fakultas juga berisi staf/mahasiswa non-admin).
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role?->slug === 'admin';
+    }
+
+    /**
      * Relasi: User ini punya role apa?
      */
     public function role()

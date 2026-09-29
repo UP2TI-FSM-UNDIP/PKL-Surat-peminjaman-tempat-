@@ -55,6 +55,13 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+    | URL aplikasi frontend (termasuk subpath), dipakai untuk tautan di QR code
+    | bukti peminjaman. Berbeda dengan FRONTEND_URL yang dipakai CORS (origin saja).
+    */
+
+    'frontend_url' => rtrim(env('FRONTEND_APP_URL', env('FRONTEND_URL', 'http://localhost:3000')), '/'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
@@ -65,7 +72,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Jakarta'),
 
     /*
     |--------------------------------------------------------------------------

@@ -77,7 +77,7 @@ export function TemplateTable({
 
                 <Button onClick={onUploadClick}>
                     <Plus className='w-4 h-4 mr-2' />
-                    Upload Template
+                    Unggah Template
                 </Button>
             </div>
 

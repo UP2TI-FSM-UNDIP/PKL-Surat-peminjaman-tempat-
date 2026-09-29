@@ -23,7 +23,6 @@ function RouteComponent() {
   const actorRole: ActorRole = 'kemahasiswaan';
   const tableRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [templateCount, setTemplateCount] = useState(0);
 
   // Dialog States
   const [dialogState, setDialogState] = useState<{
@@ -33,14 +32,11 @@ function RouteComponent() {
   const [actionLoading, setActionLoading] = useState(false);
 
   // Fetch templates count
-  const { } = useQuery({
+  const { data: templates } = useQuery({
     queryKey: ['templates-kemahasiswaan'],
-    queryFn: async () => {
-      const templates = await documentTemplateService.getTemplates();
-      setTemplateCount(templates.length);
-      return templates;
-    },
+    queryFn: () => documentTemplateService.getTemplates(),
   });
+  const templateCount = templates?.length ?? 0;
 
   // Fetch documents with server-side pagination
   const {

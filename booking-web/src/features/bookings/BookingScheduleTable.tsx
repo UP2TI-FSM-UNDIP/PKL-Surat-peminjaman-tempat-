@@ -42,7 +42,7 @@ export function BookingScheduleTable({
                     Jadwal Peminjaman Ruang {roomCode}
                 </h2>
                 <div className='flex items-center gap-2 text-sm'>
-                    <span className='text-gray-700'>Search:</span>
+                    <span className='text-gray-700'>Cari:</span>
                     <Input
                         className='w-40'
                         value={search}

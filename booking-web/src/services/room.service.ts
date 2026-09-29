@@ -139,7 +139,12 @@ export const roomService = {
     endTime: string,
     excludeDocumentId?: number, // Parameter baru untuk exclude document saat edit
   ): Promise<AvailabilityResponse['data']> {
-    const payload: any = {
+    const payload: {
+      date: string;
+      start_time: string;
+      end_time: string;
+      exclude_document_id?: number;
+    } = {
       date,
       start_time: startTime,
       end_time: endTime,

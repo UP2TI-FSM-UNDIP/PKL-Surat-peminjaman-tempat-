@@ -14,6 +14,7 @@ import type { Unit } from '@/services/unit.service';
 import { roleService } from '@/services/role.service';
 import type { Role } from '@/services/role.service';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/errors';
 
 export function ProfileCompletionModal() {
     const [isOpen, setIsOpen] = useState(false);
@@ -89,9 +90,9 @@ export function ProfileCompletionModal() {
             
             // Refresh page to apply new role/unit context if necessary
             window.location.reload();
-        } catch (error: any) {
+        } catch (error) {
             console.error('Profile update failed', error);
-            toast.error(error.response?.data?.message || 'Gagal menyimpan profil. Silakan coba lagi.');
+            toast.error(getErrorMessage(error, 'Gagal menyimpan profil. Silakan coba lagi.'));
         } finally {
             setIsLoading(false);
         }

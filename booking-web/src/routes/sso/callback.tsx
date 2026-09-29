@@ -20,16 +20,17 @@ export const Route = createFileRoute('/sso/callback')({
  */
 function SsoCallbackPage() {
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get('token')
+      ? null
+      : 'Token SSO tidak ditemukan. Silakan login kembali.',
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
 
-    if (!token) {
-      setError('Token SSO tidak ditemukan. Silakan login kembali.');
-      return;
-    }
+    if (!token) return;
 
     const processCallback = async () => {
       try {
@@ -66,7 +67,7 @@ function SsoCallbackPage() {
     };
 
     processCallback();
-  }, []);
+  }, [navigate]);
 
   if (error) {
     return (

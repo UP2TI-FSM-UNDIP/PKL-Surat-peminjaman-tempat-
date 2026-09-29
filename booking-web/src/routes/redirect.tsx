@@ -20,16 +20,17 @@ export const Route = createFileRoute('/redirect')({
  */
 function SsoRedirectPage() {
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get('token')
+      ? null
+      : 'Token tidak ditemukan. Silakan login kembali.',
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
 
-    if (!token) {
-      setError('Token tidak ditemukan. Silakan login kembali.');
-      return;
-    }
+    if (!token) return;
 
     const processRedirect = async () => {
       try {
@@ -66,7 +67,7 @@ function SsoRedirectPage() {
     };
 
     processRedirect();
-  }, []);
+  }, [navigate]);
 
   if (error) {
     return (

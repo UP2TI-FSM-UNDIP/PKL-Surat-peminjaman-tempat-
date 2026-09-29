@@ -51,7 +51,7 @@ export function WorkflowEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Workflow</DialogTitle>
+          <DialogTitle>Edit Alur</DialogTitle>
           <DialogDescription>Update informasi workflow</DialogDescription>
         </DialogHeader>
         <div className='space-y-4 py-4'>

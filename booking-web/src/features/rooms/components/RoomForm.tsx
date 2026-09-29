@@ -13,7 +13,7 @@ interface RoomFormProps {
         facilities: string;
         status: Room['status'];
     };
-    setFormData: (data: any) => void;
+    setFormData: (data: RoomFormProps['formData']) => void;
     onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
     formError?: string;
     isSubmitting: boolean;

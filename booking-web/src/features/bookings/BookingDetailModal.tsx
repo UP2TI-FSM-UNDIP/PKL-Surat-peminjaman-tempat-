@@ -2,7 +2,9 @@
 
 import * as React from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { X, Download } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/axios';
 import { Button } from '@/components/ui/button/button';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -118,6 +120,10 @@ export function BookingDetailModal({ open, onOpenChange, booking }: Props) {
                 </DetailRow>
               )}
             </div>
+
+            {['APPROVED', 'COMPLETED'].includes(booking.status?.toUpperCase()) && (
+              <BookingQrCode bookingId={booking.id} enabled={open} />
+            )}
           </div>
 
           <div className='p-6 md:p-8 pt-4 flex justify-end gap-2 shrink-0 border-t'>
@@ -167,7 +173,7 @@ function BookingStatus({
   // Normalize status ke lowercase untuk matching
   const normalizedStatus = status?.toLowerCase() as keyof typeof statusMap;
   const statusInfo = statusMap[normalizedStatus] || {
-    text: status || 'Unknown',
+    text: status || 'Tidak diketahui',
     variant: 'secondary',
   };
 
@@ -187,5 +193,59 @@ function BookingStatus({
     >
       {text}
     </Badge>
+  );
+}
+
+/**
+ * QR code bukti peminjaman. Endpoint butuh token login (Bearer), jadi gambar
+ * diambil lewat axios sebagai blob. Jika pengguna tidak berhak (403), bagian
+ * ini tidak ditampilkan.
+ */
+function BookingQrCode({ bookingId, enabled }: { bookingId: number; enabled: boolean }) {
+  const { data: blob } = useQuery({
+    queryKey: ['booking-qrcode', bookingId],
+    queryFn: async () => {
+      const res = await api.get<Blob>(`/room-bookings/${bookingId}/qrcode`, {
+        responseType: 'blob',
+      });
+      return res.data;
+    },
+    enabled,
+    retry: false,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const [url, setUrl] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!blob) return;
+    const objectUrl = URL.createObjectURL(blob);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [blob]);
+
+  if (!url) return null;
+
+  return (
+    <div className='mt-4 md:mt-6 flex flex-col sm:flex-row items-center gap-4 p-4 rounded border bg-gray-50/80'>
+      <img
+        src={url}
+        alt={`QR code bukti peminjaman #${bookingId}`}
+        className='h-36 w-36 bg-white rounded border'
+      />
+      <div className='text-center sm:text-left space-y-2'>
+        <p className='text-sm font-semibold text-gray-900'>QR Code Bukti Peminjaman</p>
+        <p className='text-xs text-gray-500'>
+          Tunjukkan QR code ini kepada petugas. Saat dipindai, akan terbuka halaman verifikasi
+          yang menampilkan status peminjaman ruang.
+        </p>
+        <a
+          href={url}
+          download={`bukti-peminjaman-${bookingId}.png`}
+          className='inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:underline'
+        >
+          <Download className='w-4 h-4' /> Unduh QR Code
+        </a>
+      </div>
+    </div>
   );
 }

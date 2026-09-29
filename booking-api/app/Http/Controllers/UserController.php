@@ -41,7 +41,7 @@ class UserController extends Controller
     public function store(StoreUserRequest $request)
     {
         abort_if(
-            $request->user()->unit->category !== 'FAKULTAS',
+            !$request->user()->isAdmin(),
             403,
             'Hanya admin yang dapat membuat user'
         );
@@ -58,7 +58,7 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, $id)
     {
         abort_if(
-            $request->user()->unit->category !== 'FAKULTAS',
+            !$request->user()->isAdmin(),
             403,
             'Hanya admin yang dapat mengupdate user'
         );
@@ -76,7 +76,7 @@ class UserController extends Controller
     public function destroy(Request $request, $id)
     {
         abort_if(
-            $request->user()->unit->category !== 'FAKULTAS',
+            !$request->user()->isAdmin(),
             403,
             'Hanya admin yang dapat menghapus user'
         );

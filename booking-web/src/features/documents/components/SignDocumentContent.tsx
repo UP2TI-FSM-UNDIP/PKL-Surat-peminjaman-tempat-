@@ -30,6 +30,7 @@ import { AxiosError } from 'axios';
 import { SignatureUpload } from '@/components/common/SignatureUpload';
 import { RevisionDialog } from '@/components/common/RevisionDialog';
 import { SubmissionDetailCard } from '@/components/common/SubmissionDetailCard';
+import { isCanceledError } from '@/lib/errors';
 
 type DocumentType = 'proposal' | 'approval-sheet' | 'executive-summary';
 
@@ -81,7 +82,7 @@ export function SignDocumentContent({
       return selectedDocType === 'approval-sheet' || selectedDocType === 'executive-summary';
     }
     return selectedDocType === 'approval-sheet';
-  }, [userRole, isWadek1, isSignatureRequiredForRole, selectedDocType]);
+  }, [isWadek1, isSignatureRequiredForRole, selectedDocType]);
 
   const isAllSigned = useMemo(() => {
     if (!isSignatureRequiredForRole) return true;
@@ -294,8 +295,8 @@ export function SignDocumentContent({
 
           // Cache the URL with composite key
           pdfCacheRef.current.set(cacheKey, url);
-        } catch (err: any) {
-          if (err.name === 'AbortError' || err.name === 'CanceledError') {
+        } catch (err) {
+          if (isCanceledError(err)) {
             return;
           }
 
@@ -352,7 +353,10 @@ export function SignDocumentContent({
       mounted = false;
       clearTimeout(initTimeout);
     };
-  }, []); // Empty dependencies - runs only once on mount
+    // Sengaja hanya sekali saat mount; perubahan documentId dan tab dokumen
+    // ditangani effect terpisah di bawah (dijaga dengan ref agar tidak dobel).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle documentId changes
   useEffect(() => {
@@ -387,7 +391,9 @@ export function SignDocumentContent({
           if (Array.isArray(parsed) && parsed.length > 0) {
             setSignedDocTypes(new Set(parsed as DocumentType[]));
           }
-        } catch (e) { }
+        } catch {
+          // Data sessionStorage rusak: abaikan, anggap belum ada yang ditandatangani
+        }
       }
     }
   }, [documentId, currentUser?.id]);
@@ -617,9 +623,14 @@ export function SignDocumentContent({
 
   // Cleanup on unmount
   useEffect(() => {
+    // Objek di dalam ref ini tidak pernah diganti (hanya isinya), jadi aman
+    // diambil di awal effect untuk dipakai saat cleanup.
+    const timeouts = timeoutsRef.current;
+    const pdfCache = pdfCacheRef.current;
+
     return () => {
       // Clear all timeouts
-      Object.values(timeoutsRef.current).forEach((timeout) => {
+      Object.values(timeouts).forEach((timeout) => {
         if (timeout) clearTimeout(timeout);
       });
 
@@ -638,7 +649,7 @@ export function SignDocumentContent({
       }
 
       // Cleanup cached PDFs
-      pdfCacheRef.current.forEach((url) => {
+      pdfCache.forEach((url) => {
         if (url && url.startsWith('blob:')) {
           try {
             window.URL.revokeObjectURL(url);
@@ -647,7 +658,7 @@ export function SignDocumentContent({
           }
         }
       });
-      pdfCacheRef.current.clear();
+      pdfCache.clear();
 
       if (
         signatureUrlRef.current &&

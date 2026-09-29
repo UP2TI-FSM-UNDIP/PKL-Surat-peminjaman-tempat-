@@ -54,7 +54,7 @@ export function TemplateUploadModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className='sm:max-w-[500px] max-h-[90vh] overflow-y-auto'>
                 <DialogHeader>
-                    <DialogTitle>Upload Template Baru</DialogTitle>
+                    <DialogTitle>Unggah Template Baru</DialogTitle>
                     <DialogDescription>
                         Upload template dokumen (.docx) untuk Executive Summary atau Lembar Pengesahan
                     </DialogDescription>
@@ -189,7 +189,7 @@ export function TemplateUploadModal({
                             Batal
                         </Button>
                         <Button type='submit' disabled={isSubmitting}>
-                            {isSubmitting ? 'Mengupload...' : 'Upload Template'}
+                            {isSubmitting ? 'Mengunggah...' : 'Unggah Template'}
                         </Button>
                     </DialogFooter>
                 </form>

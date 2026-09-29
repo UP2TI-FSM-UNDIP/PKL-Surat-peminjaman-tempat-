@@ -433,7 +433,7 @@ class RoomBookingService
 
         return [
             'booking_id' => $booking->id,
-            'booking_date' => $booking->booking_date->format('d F Y'),
+            'booking_date' => $booking->booking_date->translatedFormat('d F Y'),
             'day' => $booking->booking_date->translatedFormat('l'),
             'start_time' => substr($booking->start_time, 0, 5),
             'end_time' => substr($booking->end_time, 0, 5),
@@ -457,7 +457,7 @@ class RoomBookingService
 
             'approved_by' => $booking->approvedBy ? [
                 'name' => $booking->approvedBy->name,
-                'approved_at' => $booking->approved_at?->format('d F Y H:i'),
+                'approved_at' => $booking->approved_at?->translatedFormat('d F Y H:i'),
             ] : null,
 
             'document' => $booking->document ? [
@@ -466,7 +466,7 @@ class RoomBookingService
                 'status' => $booking->document->status,
             ] : null,
 
-            'created_at' => $booking->created_at->format('d F Y H:i'),
+            'created_at' => $booking->created_at->translatedFormat('d F Y H:i'),
             'qr_url' => url("/api/room-bookings/{$booking->id}/qrcode"),
             'receipt_url' => url("/api/room-bookings/{$booking->id}/receipt"),
         ];

@@ -39,14 +39,7 @@ class RoomBookingController extends Controller
             'approvedBy',
         ])->findOrFail($id);
 
-        // Authorization: booker, admin, sumber daya, atau yang punya akses ke dokumennya
-        $user = $request->user();
-        $isAuthorized = $booking->booked_by === $user->id
-            || in_array($user->role->slug, ['admin', 'sumber-daya'])
-            || $booking->approved_by === $user->id
-            || ($booking->document && app(\App\Services\DocumentService::class)->checkDocumentAccess($booking->document, $user));
-
-        if (!$isAuthorized) {
+        if (!$this->canViewBooking($booking, $request->user())) {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki akses untuk melihat booking ini',
@@ -376,12 +369,7 @@ class RoomBookingController extends Controller
         $booking = RoomBooking::findOrFail($id);
         $user = $request->user();
 
-        // Authorization: only booker, admin, or approver
-        $isAuthorized = $booking->booked_by === $user->id
-            || $user->role->slug === 'admin'
-            || $booking->approved_by === $user->id;
-
-        if (!$isAuthorized) {
+        if (!$this->canViewBooking($booking, $user)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki akses untuk melihat bukti peminjaman ini',
@@ -400,33 +388,83 @@ class RoomBookingController extends Controller
     {
         $booking = RoomBooking::findOrFail($id);
 
-        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'));
-        $bookingUrl = "{$frontendUrl}/bookings/{$booking->id}";
-
-        try {
-            $qrCode = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
-                ->size(300)
-                ->margin(2)
-                ->generate($bookingUrl);
-
-            return response($qrCode, 200, [
-                'Content-Type' => 'image/png',
-                'Content-Disposition' => 'inline; filename="booking-' . $booking->id . '-qr.png"',
-                'Cache-Control' => 'public, max-age=86400',
-            ]);
-        } catch (\Throwable $e) {
-            // Fallback: return URL as JSON if QR library not available
-            // (\Throwable, not \Exception — a missing class raises \Error, not \Exception)
-            \Log::warning('QR code generation failed', ['error' => $e->getMessage()]);
-
+        if (!$this->canViewBooking($booking, $request->user())) {
             return response()->json([
-                'success' => true,
-                'data' => [
-                    'booking_id' => $booking->id,
-                    'url' => $bookingUrl,
-                    'message' => 'QR code library not installed. Install simplesoftwareio/simple-qrcode for QR generation.',
-                ],
-            ]);
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke bukti peminjaman ini',
+            ], 403);
         }
+
+        if (!in_array($booking->status, ['APPROVED', 'COMPLETED'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'QR code bukti peminjaman hanya tersedia untuk peminjaman yang sudah disetujui',
+            ], 400);
+        }
+
+        $verificationUrl = $booking->verificationUrl();
+
+        $qrCode = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+            ->size(300)
+            ->margin(2)
+            ->errorCorrection('M')
+            ->generate($verificationUrl);
+
+        return response($qrCode, 200, [
+            'Content-Type' => 'image/png',
+            'Content-Disposition' => 'inline; filename="bukti-peminjaman-' . $booking->id . '.png"',
+            'Cache-Control' => 'private, max-age=3600',
+            'X-Verification-Url' => $verificationUrl,
+        ]);
+    }
+
+    /**
+     * Halaman verifikasi publik (tujuan QR code). Tidak butuh login, tetapi
+     * wajib membawa token HMAC yang hanya ada di QR code. Hanya mengembalikan
+     * data yang diperlukan untuk memverifikasi peminjaman (tanpa data pribadi).
+     */
+    public function verify(Request $request, $id)
+    {
+        $booking = RoomBooking::with(['room', 'bookedBy.unit', 'approvedBy', 'document'])->find($id);
+
+        if (!$booking || !$booking->isValidVerificationToken($request->query('token'))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bukti peminjaman tidak valid atau tidak ditemukan',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $booking->id,
+                'status' => $booking->status,
+                'room' => $booking->room ? [
+                    'name' => $booking->room->name,
+                    'code' => $booking->room->code,
+                ] : null,
+                'booking_date' => $booking->booking_date->toDateString(),
+                'day' => $booking->booking_date->translatedFormat('l'),
+                'start_time' => substr($booking->start_time, 0, 5),
+                'end_time' => substr($booking->end_time, 0, 5),
+                'purpose' => $booking->purpose,
+                'event_name' => $booking->document?->content['event_name'] ?? null,
+                'unit' => $booking->bookedBy?->unit?->name,
+                'approved_by' => $booking->approvedBy?->name,
+                'approved_at' => $booking->approved_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
+     * Siapa yang boleh melihat detail / bukti / QR booking: peminjam, admin,
+     * sumber daya, approver booking, atau pihak yang punya akses ke dokumennya.
+     */
+    private function canViewBooking(RoomBooking $booking, $user): bool
+    {
+        return $booking->booked_by === $user->id
+            || in_array($user->role?->slug, ['admin', 'sumber-daya'])
+            || $booking->approved_by === $user->id
+            || ($booking->document && app(\App\Services\DocumentService::class)->checkDocumentAccess($booking->document, $user));
     }
 }
