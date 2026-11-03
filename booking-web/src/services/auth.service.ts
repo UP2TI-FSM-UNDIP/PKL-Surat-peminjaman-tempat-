@@ -1,16 +1,13 @@
 import api from '@/lib/axios';
 
+/** Event yang dikirim setiap data login di localStorage berubah (tab yang sama). */
+export const AUTH_CHANGED_EVENT = 'auth-changed';
+
 interface LoginRequest {
   email: string;
   password: string;
 }
 
-interface RegisterRequest {
-  name: string;
-  email: string;
-  password: string;
-  password_confirmation: string;
-}
 
 interface LoginResponse {
   message: string;
@@ -46,14 +43,6 @@ export const authService = {
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await api.post<LoginResponse>('/login', credentials);
-    return response.data;
-  },
-
-  /**
-   * Register user baru
-   */
-  async register(data: RegisterRequest): Promise<LoginResponse> {
-    const response = await api.post<LoginResponse>('/register', data);
     return response.data;
   },
 
@@ -105,6 +94,10 @@ export const authService = {
     }
 
     localStorage.setItem('isProfileCompleted', data.user.is_profile_completed ? 'true' : 'false');
+
+    // Beri tahu komponen di tab yang sama (event 'storage' hanya untuk tab lain),
+    // mis. modal Lengkapi Profil yang perlu muncul tepat setelah login SSO.
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
   },
 
   /**
@@ -122,6 +115,7 @@ export const authService = {
     localStorage.removeItem('unitId');
     localStorage.removeItem('userUnitCategory');
     localStorage.removeItem('isProfileCompleted');
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
   },
 
   /**
@@ -161,6 +155,9 @@ export const authService = {
       // Senat punya route sendiri
       Senat: '/senat/',
 
+      // Akun baru SSO yang role-nya belum ditetapkan admin
+      'Menunggu Penetapan': '/menunggu-penetapan/',
+
       // Sekretaris & Mahasiswa -> Peminjam
       Sekretaris: '/peminjam/',
       Peminjam: '/peminjam/',
@@ -190,7 +187,7 @@ export const authService = {
   /**
    * Update profile (NIM/NIP, Unit, Role)
    */
-  async updateProfile(data: { name: string; nim_nip: string; role_id: number; unit_id: number }) {
+  async updateProfile(data: { name: string; nim_nip: string; unit_id: number }) {
     const response = await api.patch('/user/profile', data);
     return response.data;
   },

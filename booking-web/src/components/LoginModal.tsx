@@ -16,6 +16,10 @@ interface LoginModalProps {
     onClose: () => void;
 }
 
+// Login email/password lokal hanya ditampilkan jika diaktifkan (VITE_LOCAL_LOGIN=true).
+// Login utama lewat SSO FSM; backend juga menolak login lokal sesuai AUTH_LOCAL_LOGIN.
+const LOCAL_LOGIN_ENABLED = import.meta.env.VITE_LOCAL_LOGIN === 'true';
+
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
@@ -118,6 +122,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                                 </DialogDescription>
                             </div>
 
+                            {LOCAL_LOGIN_ENABLED && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="space-y-4">
                                     <div className="space-y-2">
@@ -187,13 +192,16 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                                     <span className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                                 </Button>
                             </form>
+                            )}
 
                             <div className="pt-4 flex flex-col gap-3">
+                                {LOCAL_LOGIN_ENABLED && (
                                 <div className="relative flex items-center py-1">
                                     <div className="flex-grow border-t border-gray-100" />
                                     <span className="px-3 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-[0.15em]">atau</span>
                                     <div className="flex-grow border-t border-gray-100" />
                                 </div>
+                                )}
 
                                 <button
                                     type="button"

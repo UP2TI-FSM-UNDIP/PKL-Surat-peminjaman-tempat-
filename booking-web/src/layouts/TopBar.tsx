@@ -51,7 +51,7 @@ export function TopBar({
     }
     localStorage.removeItem('token');
     setUser(null);
-    window.location.href = '/';
+    window.location.href = import.meta.env.BASE_URL; // '/peminjaman-ruang/', bukan root apps-fsm
   };
 
   // Fetch current user info

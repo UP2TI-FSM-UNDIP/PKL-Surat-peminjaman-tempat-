@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -8,26 +8,43 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button/button';
 import { Input } from '@/components/ui/input';
-import { authService } from '@/services/auth.service';
+import { authService, AUTH_CHANGED_EVENT } from '@/services/auth.service';
 import { unitService } from '@/services/unit.service';
 import type { Unit } from '@/services/unit.service';
-import { roleService } from '@/services/role.service';
-import type { Role } from '@/services/role.service';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/errors';
+
+const SELF_SERVICE_UNIT_CATEGORIES: string[] = ['HMD', 'BEM', 'SENAT', 'UKM'];
 
 export function ProfileCompletionModal() {
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [units, setUnits] = useState<Unit[]>([]);
-    const [roles, setRoles] = useState<Role[]>([]);
-    
+    // Role ditetapkan admin (atau otomatis Admin dari SSO), tidak dipilih sendiri
+    const currentRoleName = localStorage.getItem('role') || '-';
+    const currentUnitId = Number(localStorage.getItem('unitId')) || 0;
+
     const [formData, setFormData] = useState({
         name: localStorage.getItem('userName') || '',
         nim_nip: '',
-        role_id: Number(localStorage.getItem('roleId')) || 5, // Default Sekretaris
-        unit_id: Number(localStorage.getItem('unitId')) || 1, // Default FSM
+        unit_id: currentUnitId,
     });
+
+    const fetchData = useCallback(async () => {
+        try {
+            const fetchedUnits = await unitService.getUnits();
+            // Hanya organisasi mahasiswa yang bisa dipilih sendiri, atau tetap di unit sekarang
+            setUnits(
+                fetchedUnits.filter(
+                    (unit) =>
+                        SELF_SERVICE_UNIT_CATEGORIES.includes(unit.category) ||
+                        unit.id === currentUnitId,
+                ),
+            );
+        } catch (error) {
+            console.error('Failed to fetch units', error);
+        }
+    }, [currentUnitId]);
 
     useEffect(() => {
         const checkStatus = () => {
@@ -36,6 +53,12 @@ export function ProfileCompletionModal() {
             
             // Show modal if logged in but profile not completed
             if (token && isCompleted === 'false') {
+                // Isi ulang dari data login terbaru (nama dari SSO, unit saat ini)
+                setFormData((prev) => ({
+                    ...prev,
+                    name: prev.name || localStorage.getItem('userName') || '',
+                    unit_id: prev.unit_id || Number(localStorage.getItem('unitId')) || 0,
+                }));
                 setIsOpen(true);
                 fetchData();
             } else {
@@ -46,22 +69,16 @@ export function ProfileCompletionModal() {
         checkStatus();
         
         // Listen for storage changes (sync between tabs)
+        // 'storage' = perubahan dari tab lain; AUTH_CHANGED_EVENT = tab ini
+        // (mis. tepat setelah kembali dari SSO, tanpa perlu login ulang)
         window.addEventListener('storage', checkStatus);
-        return () => window.removeEventListener('storage', checkStatus);
-    }, []);
+        window.addEventListener(AUTH_CHANGED_EVENT, checkStatus);
+        return () => {
+            window.removeEventListener('storage', checkStatus);
+            window.removeEventListener(AUTH_CHANGED_EVENT, checkStatus);
+        };
+    }, [fetchData]);
 
-    const fetchData = async () => {
-        try {
-            const [fetchedUnits, fetchedRoles] = await Promise.all([
-                unitService.getUnits(),
-                roleService.getRoles()
-            ]);
-            setUnits(fetchedUnits);
-            setRoles(fetchedRoles);
-        } catch (error) {
-            console.error('Failed to fetch units/roles', error);
-        }
-    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -87,9 +104,9 @@ export function ProfileCompletionModal() {
 
             toast.success('Profil berhasil dilengkapi!');
             setIsOpen(false);
-            
-            // Refresh page to apply new role/unit context if necessary
-            window.location.reload();
+
+            // Langsung ke dashboard sesuai role (muat ulang penuh agar konteks role/unit baru terpakai)
+            authService.redirectByRole(response.data?.role?.name ?? '');
         } catch (error) {
             console.error('Profile update failed', error);
             toast.error(getErrorMessage(error, 'Gagal menyimpan profil. Silakan coba lagi.'));
@@ -149,20 +166,11 @@ export function ProfileCompletionModal() {
 
                     <div className="space-y-2">
                         <label className="text-sm font-semibold">Role / Jabatan</label>
-                        <select 
-                            name="role_id"
-                            value={formData.role_id}
-                            onChange={handleChange}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                            required
-                        >
-                            <option value="">Pilih Role...</option>
-                            {roles.map(role => (
-                                <option key={role.id} value={role.id}>{role.name}</option>
-                            ))}
-                        </select>
+                        <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 text-sm">
+                            {currentRoleName}
+                        </div>
                         <p className="text-[10px] text-muted-foreground italic">
-                            * Pilih role yang paling sesuai dengan status Anda saat ini.
+                            * Role ditetapkan oleh admin. Hubungi admin jika role Anda belum sesuai.
                         </p>
                     </div>
 

@@ -110,6 +110,15 @@ return [
     |
     */
 
+    /*
+    | Login email/password lokal (POST /api/login). Login utama lewat SSO FSM.
+    | off   = ditutup (default)
+    | admin = hanya akun Admin (akses darurat)
+    | all   = semua akun (hanya untuk pengujian/staging)
+    */
+
+    'local_login' => env('AUTH_LOCAL_LOGIN', 'off'),
+
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
 ];

@@ -52,8 +52,9 @@ Route::get('/room-bookings/{id}/verify', [RoomBookingController::class, 'verify'
 // Public Room Image Route (Accessed by <img> tags)
 Route::get('/rooms/{id}/image', 'App\Http\Controllers\RoomController@serveImage')->name('api.rooms.image');
 
-// Routes yang membutuhkan autentikasi
-Route::middleware('auth:sanctum')->group(function () {
+// Routes yang membutuhkan autentikasi + role sudah ditetapkan admin
+// (akun "Menunggu Penetapan" hanya boleh GET /user, PATCH /user/profile, GET /units)
+Route::middleware(['auth:sanctum', 'role.assigned'])->group(function () {
 
     // =============================================
     // ADMIN-ONLY ROUTES

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Unit;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -88,6 +90,13 @@ class SsoAuthController extends Controller
         }
 
         // Step 4: Find existing user or auto-register
+        //
+        // Aturan role: hanya user yang di SSO berstatus admin/superadmin yang
+        // menjadi Admin. User lain mendapat role awal "Menunggu Penetapan" di unit
+        // Fakultas; role & unit sebenarnya ditetapkan oleh admin (Manajemen Pengguna).
+        $isSsoAdmin = in_array($role, ['admin', 'superadmin'], true);
+        $adminRoleId = Role::where('slug', 'admin')->value('id');
+
         $user = User::where('email', $email)->with(['role', 'unit'])->first();
 
         if (!$user) {
@@ -95,26 +104,12 @@ class SsoAuthController extends Controller
             // NOTE: Database has NOT NULL constraints on role_id and unit_id
             Log::info('[SSO] User not found, auto-registering', ['email' => $email, 'name' => $name, 'sso_role' => $role]);
 
-            // Default Mapping (Berdasarkan data DB):
-            // 1: Admin, 2: Dosen Pendamping, 5: Sekretaris, 7: Kemahasiswaan
-            $roleId = 5; // Default: Sekretaris (Peminjam)
-            $unitId = 1; // Default: Fakultas Sains dan Matematika
-
-            // Role Mapping from SSO
-            if ($role === 'dosen') {
-                $roleId = 2; // Dosen Pendamping Ormawa
-            } elseif ($role === 'staff') {
-                $roleId = 7; // Kemahasiswaan (Fakultas)
-            } elseif ($role === 'admin' || $role === 'superadmin') {
-                $roleId = 1; // Admin
-            }
-
-            // Superadmin/Admin safety - assign role Admin if email matches specific pattern or list
-            // For now, let's treat specific emails as Admins if needed
-            $adminEmails = ['admin@undip.ac.id', 'tim8@undip.ac.id']; 
-            if (in_array($email, $adminEmails)) {
-                $roleId = 1; // Force Admin
-            }
+            // Non-admin: "Menunggu Penetapan" (tanpa akses) sampai admin menetapkan role
+            $roleId = $isSsoAdmin
+                ? $adminRoleId
+                : (Role::where('slug', 'menunggu-penetapan')->value('id')
+                    ?? Role::where('slug', 'sekretaris')->value('id'));
+            $unitId = Unit::where('category', 'FAKULTAS')->value('id');
 
             $user = User::create([
                 'name'        => $name ?? $email,
@@ -130,13 +125,23 @@ class SsoAuthController extends Controller
             $user->load(['role', 'unit']);
 
             Log::info('[SSO] User auto-registered', [
-                'user_id' => $user->id, 
+                'user_id' => $user->id,
                 'email'   => $email,
+                'sso_role' => $role,
                 'role'    => $user->role->name ?? $roleId,
                 'unit'    => $user->unit->name ?? $unitId,
             ]);
         } else {
             Log::info('[SSO] Existing user found', ['user_id' => $user->id, 'email' => $email]);
+
+            // Admin di SSO -> Admin di aplikasi (penurunan role hanya oleh admin)
+            if ($isSsoAdmin && !$user->isAdmin() && $adminRoleId) {
+                Log::warning('[SSO] Promoting user to Admin based on SSO role', [
+                    'user_id' => $user->id, 'from_role' => $user->role?->slug, 'sso_role' => $role,
+                ]);
+                $user->update(['role_id' => $adminRoleId]);
+                $user->load(['role', 'unit']);
+            }
         }
 
         // Step 5: Create a Sanctum token for the local session

@@ -4,13 +4,12 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/register', [RegisteredUserController::class, 'store'])
-    ->middleware(['guest', 'throttle:3,1'])
-    ->name('register');
+// Registrasi publik ditutup: akun dibuat otomatis saat login SSO pertama,
+// dan role hanya ditetapkan oleh admin. (Sebelumnya POST /api/register menerima
+// role_id dari client sehingga siapa pun bisa mendaftar sebagai Admin.)
 
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])
     ->middleware(['guest', 'throttle:5,1'])

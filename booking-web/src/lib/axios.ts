@@ -42,7 +42,7 @@ api.interceptors.response.use(
 
       // Opsional: Redirect ke halaman login
       // Karena ini file JS biasa (bukan komponen), kita pakai cara native:
-      window.location.href = '/';
+      window.location.href = import.meta.env.BASE_URL; // '/peminjaman-ruang/', bukan root apps-fsm
     }
     return Promise.reject(error);
   },

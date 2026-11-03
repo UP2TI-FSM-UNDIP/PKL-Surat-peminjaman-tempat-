@@ -13,6 +13,7 @@ import { Route as TandaTanganRouteImport } from './routes/tanda-tangan'
 import { Route as SignDocumentRouteImport } from './routes/sign-document'
 import { Route as RedirectRouteImport } from './routes/redirect'
 import { Route as PreviewDocumentRouteImport } from './routes/preview-document'
+import { Route as MenungguPenetapanRouteImport } from './routes/menunggu-penetapan'
 import { Route as Wadek1RouteRouteImport } from './routes/wadek1/route'
 import { Route as SumberDayaRouteRouteImport } from './routes/sumber-daya/route'
 import { Route as SenatRouteRouteImport } from './routes/senat/route'
@@ -93,6 +94,11 @@ const RedirectRoute = RedirectRouteImport.update({
 const PreviewDocumentRoute = PreviewDocumentRouteImport.update({
   id: '/preview-document',
   path: '/preview-document',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MenungguPenetapanRoute = MenungguPenetapanRouteImport.update({
+  id: '/menunggu-penetapan',
+  path: '/menunggu-penetapan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Wadek1RouteRoute = Wadek1RouteRouteImport.update({
@@ -435,6 +441,7 @@ export interface FileRoutesByFullPath {
   '/senat': typeof SenatRouteRouteWithChildren
   '/sumber-daya': typeof SumberDayaRouteRouteWithChildren
   '/wadek1': typeof Wadek1RouteRouteWithChildren
+  '/menunggu-penetapan': typeof MenungguPenetapanRoute
   '/preview-document': typeof PreviewDocumentRoute
   '/redirect': typeof RedirectRoute
   '/sign-document': typeof SignDocumentRoute
@@ -493,6 +500,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/menunggu-penetapan': typeof MenungguPenetapanRoute
   '/preview-document': typeof PreviewDocumentRoute
   '/redirect': typeof RedirectRoute
   '/sign-document': typeof SignDocumentRoute
@@ -561,6 +569,7 @@ export interface FileRoutesById {
   '/senat': typeof SenatRouteRouteWithChildren
   '/sumber-daya': typeof SumberDayaRouteRouteWithChildren
   '/wadek1': typeof Wadek1RouteRouteWithChildren
+  '/menunggu-penetapan': typeof MenungguPenetapanRoute
   '/preview-document': typeof PreviewDocumentRoute
   '/redirect': typeof RedirectRoute
   '/sign-document': typeof SignDocumentRoute
@@ -630,6 +639,7 @@ export interface FileRouteTypes {
     | '/senat'
     | '/sumber-daya'
     | '/wadek1'
+    | '/menunggu-penetapan'
     | '/preview-document'
     | '/redirect'
     | '/sign-document'
@@ -688,6 +698,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/menunggu-penetapan'
     | '/preview-document'
     | '/redirect'
     | '/sign-document'
@@ -755,6 +766,7 @@ export interface FileRouteTypes {
     | '/senat'
     | '/sumber-daya'
     | '/wadek1'
+    | '/menunggu-penetapan'
     | '/preview-document'
     | '/redirect'
     | '/sign-document'
@@ -823,6 +835,7 @@ export interface RootRouteChildren {
   SenatRouteRoute: typeof SenatRouteRouteWithChildren
   SumberDayaRouteRoute: typeof SumberDayaRouteRouteWithChildren
   Wadek1RouteRoute: typeof Wadek1RouteRouteWithChildren
+  MenungguPenetapanRoute: typeof MenungguPenetapanRoute
   PreviewDocumentRoute: typeof PreviewDocumentRoute
   RedirectRoute: typeof RedirectRoute
   SignDocumentRoute: typeof SignDocumentRoute
@@ -859,6 +872,13 @@ declare module '@tanstack/react-router' {
       path: '/preview-document'
       fullPath: '/preview-document'
       preLoaderRoute: typeof PreviewDocumentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/menunggu-penetapan': {
+      id: '/menunggu-penetapan'
+      path: '/menunggu-penetapan'
+      fullPath: '/menunggu-penetapan'
+      preLoaderRoute: typeof MenungguPenetapanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wadek1': {
@@ -1490,6 +1510,7 @@ const rootRouteChildren: RootRouteChildren = {
   SenatRouteRoute: SenatRouteRouteWithChildren,
   SumberDayaRouteRoute: SumberDayaRouteRouteWithChildren,
   Wadek1RouteRoute: Wadek1RouteRouteWithChildren,
+  MenungguPenetapanRoute: MenungguPenetapanRoute,
   PreviewDocumentRoute: PreviewDocumentRoute,
   RedirectRoute: RedirectRoute,
   SignDocumentRoute: SignDocumentRoute,

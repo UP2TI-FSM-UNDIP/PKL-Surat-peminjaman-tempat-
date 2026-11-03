@@ -74,13 +74,16 @@ class UserService
         $user->delete();
     }
 
+    /**
+     * Lengkapi profil sendiri. Role TIDAK pernah diubah di sini (hanya admin);
+     * unit hanya ikut jika lolos validasi UpdateProfileRequest.
+     */
     public function updateProfile(User $user, array $data): User
     {
         $user->update([
             'name'                 => $data['name'],
             'nim_nip'              => $data['nim_nip'],
-            'role_id'              => $data['role_id'],
-            'unit_id'              => $data['unit_id'],
+            'unit_id'              => $data['unit_id'] ?? $user->unit_id,
             'is_profile_completed' => true,
         ]);
 

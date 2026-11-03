@@ -65,6 +65,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Akun baru dari SSO yang role-nya belum ditetapkan admin.
+     */
+    public function isPendingRole(): bool
+    {
+        return $this->role?->slug === 'menunggu-penetapan';
+    }
+
+    /**
      * Relasi: User ini punya role apa?
      */
     public function role()
