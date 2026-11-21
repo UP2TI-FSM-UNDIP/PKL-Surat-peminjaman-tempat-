@@ -17,24 +17,11 @@ export interface BookingPolicy {
   created_at: string;
 }
 
-export interface PolicyPreviewRow {
-  h_minus: number;
-  application_date: string;
-  matched_min_days: number | null;
-  deadline_offset: number | null;
-  deadline: string | null;
-}
-
-export interface PolicyPreview {
-  valid: boolean;
-  warnings: Record<string, string[]>;
-  preview: PolicyPreviewRow[];
-}
-
 export interface PolicyAudit {
   id: number;
   booking_policy_id: number;
   user_id: number | null;
+  user?: { id: number; name: string } | null;
   action: 'CREATED' | 'UPDATED' | 'RECALCULATED';
   before_json: Record<string, unknown> | null;
   after_json: Record<string, unknown> | null;

@@ -30,7 +30,7 @@ class BookingPolicyController extends Controller
 
     public function audits()
     {
-        return response()->json(['success' => true, 'data' => BookingPolicyAudit::latest('id')->paginate(20)]);
+        return response()->json(['success' => true, 'data' => BookingPolicyAudit::with('user:id,name')->latest('id')->paginate(20)]);
     }
 
     public function recalculate(RecalculateBookingPolicyRequest $request, BookingPolicyService $service)

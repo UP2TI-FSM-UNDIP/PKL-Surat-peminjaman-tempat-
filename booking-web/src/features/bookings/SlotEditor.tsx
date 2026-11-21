@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Controller, useFieldArray, useWatch, type Control, type UseFormSetValue } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { Button } from '@/components/ui/button/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2 } from 'lucide-react';
@@ -68,7 +69,12 @@ export function SlotEditor({ control, setValue, mode, rooms, rulesByDate, maxRow
                   control={control}
                   name={`slots.${index}.booking_date`}
                   render={({ field: dateField }) => (
-                    <Input type="date" aria-label="Tanggal" value={dateField.value} onChange={dateField.onChange} />
+                    <DateInput
+                      id={`slot-${index}-booking-date`}
+                      value={dateField.value}
+                      onChange={dateField.onChange}
+                      aria-label="Tanggal"
+                    />
                   )}
                 />
               ) : (

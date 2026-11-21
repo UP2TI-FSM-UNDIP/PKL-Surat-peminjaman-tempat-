@@ -8,11 +8,9 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { bookingPolicyService } from '@/services/booking-policy.service';
 import { validatePolicyDraft } from '@/lib/policyRules';
-import { useDebounce } from '@/hooks/useDebounce';
 import { getErrorMessage } from '@/lib/errors';
 import type { PolicyDraft } from '@/types/booking-policy';
 import { PolicyTierEditor } from './PolicyTierEditor';
-import { PolicyPreviewTable } from './PolicyPreviewTable';
 import { PolicySimulator } from './PolicySimulator';
 import { PolicyAuditTable } from './PolicyAuditTable';
 
@@ -27,7 +25,6 @@ export function BookingPolicyForm() {
     },
   });
   const draft = useWatch({ control }) as PolicyDraft;
-  const debounced = useDebounce(draft, 400);
   const [recalc, setRecalc] = useState<{ count: number; affected: Array<{ document_id: number; deadline: string }> } | null>(null);
   const hydratedPolicyId = useRef<number | null>(null);
 
@@ -44,11 +41,6 @@ export function BookingPolicyForm() {
     });
   }, [policyQuery.data, reset]);
 
-  const previewQuery = useQuery({
-    queryKey: ['policy-preview', debounced],
-    queryFn: () => bookingPolicyService.preview(debounced),
-    enabled: !!debounced?.tiers?.length,
-  });
   const errors = useMemo(() => validatePolicyDraft({ min_booking_days: draft.min_booking_days, tiers: draft.tiers ?? [] }), [draft.min_booking_days, draft.tiers]);
 
   const save = useMutation({
@@ -92,7 +84,7 @@ export function BookingPolicyForm() {
 
   const policyId = policyQuery.data.id;
   const recalcDisabled = calculate.isPending || isDirty;
-  const invalid = Object.keys(errors).length > 0 || previewQuery.data?.valid === false;
+  const invalid = Object.keys(errors).length > 0;
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit((values) => save.mutate(values))} onChange={() => setRecalc(null)}>
@@ -117,13 +109,14 @@ export function BookingPolicyForm() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Preview H-30 sampai H-1</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          {previewQuery.data && <PolicyPreviewTable rows={previewQuery.data.preview} />}
+        <CardHeader>
+          <CardTitle>Simulasi deadline</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Pilih tanggal pengajuan dan tanggal peminjaman untuk melihat tier dan deadline yang berlaku.
+          </p>
+        </CardHeader>
+        <CardContent>
           <PolicySimulator draft={draft as PolicyDraft} />
-          {Object.entries(previewQuery.data?.warnings ?? {}).map(([key, values]) => (
-            <p key={key} className="text-sm text-destructive">{key}: {values.join(', ')}</p>
-          ))}
         </CardContent>
       </Card>
 

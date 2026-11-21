@@ -29,5 +29,9 @@ class BookingPolicyAdminTest extends TestCase
 
         $this->assertDatabaseCount('booking_policies', 1);
         $this->assertDatabaseHas('booking_policy_audits', ['action' => 'CREATED']);
+
+        $this->getJson('/api/admin/booking-policy/audits')
+            ->assertOk()
+            ->assertJsonPath('data.data.0.user.name', $admin->name);
     }
 }

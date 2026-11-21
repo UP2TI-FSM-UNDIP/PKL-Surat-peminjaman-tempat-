@@ -1,5 +1,5 @@
-import { differenceInCalendarDays, parseISO } from 'date-fns';
-import type { PolicyPreviewRow } from '@/types/booking-policy';
+import { differenceInCalendarDays, format, isValid, parseISO, subDays } from 'date-fns';
+import type { PolicyDraft } from '@/types/booking-policy';
 
 export function validatePolicyDraft(input: {
   min_booking_days: number;
@@ -32,19 +32,48 @@ export function validatePolicyDraft(input: {
   return errors;
 }
 
-export function previewRowForDate(
-  rows: PolicyPreviewRow[],
-  hDate: string,
-  today: string,
-): { row: PolicyPreviewRow | null; reason?: string } {
-  const days = differenceInCalendarDays(parseISO(hDate), parseISO(today));
-  if (days < 1) return { row: null, reason: 'Tanggal H harus setelah hari ini.' };
-  if (days > 30) return { row: null, reason: 'Di luar jendela preview 30 hari.' };
-  const row = rows.find((item) => item.h_minus === days) ?? null;
-  return row ? { row } : { row: null, reason: 'Tier tidak ditemukan.' };
-}
+export type PolicySimulation =
+  | {
+      valid: true;
+      daysBefore: number;
+      tier: PolicyDraft['tiers'][number];
+      deadline: string;
+    }
+  | { valid: false; reason: string };
 
-export function normalizeWarnings(warnings: unknown): Record<string, string[]> {
-  if (!warnings || Array.isArray(warnings) || typeof warnings !== 'object') return {};
-  return warnings as Record<string, string[]>;
+export function simulatePolicy(
+  draft: PolicyDraft,
+  applicationDate: string,
+  hDate: string,
+): PolicySimulation {
+  if (!applicationDate || !hDate) {
+    return { valid: false, reason: 'Isi tanggal pengajuan dan tanggal peminjaman.' };
+  }
+
+  const application = parseISO(applicationDate);
+  const target = parseISO(hDate);
+  if (!isValid(application) || !isValid(target)) {
+    return { valid: false, reason: 'Tanggal tidak valid.' };
+  }
+
+  const daysBefore = differenceInCalendarDays(target, application);
+  if (daysBefore < 1) {
+    return { valid: false, reason: 'Tanggal pengajuan harus sebelum tanggal peminjaman.' };
+  }
+
+  const tiers = [...(draft.tiers ?? [])].sort((a, b) => b.min_days_before - a.min_days_before);
+  const tier = tiers.find((item) => daysBefore >= item.min_days_before);
+  if (!tier) {
+    return {
+      valid: false,
+      reason: 'Tidak ada tier yang cocok. Pengajuan terlalu dekat dengan tanggal peminjaman.',
+    };
+  }
+
+  return {
+    valid: true,
+    daysBefore,
+    tier,
+    deadline: format(subDays(target, tier.deadline_offset), 'yyyy-MM-dd'),
+  };
 }

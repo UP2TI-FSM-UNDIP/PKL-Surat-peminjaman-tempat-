@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { Button } from '@/components/ui/button/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -176,7 +177,19 @@ export function ReservationWizardForm({ intent, submitLabel = 'Simpan Reservasi'
       ) : (
         <div className="space-y-2">
           <Label htmlFor="booking_date">Tanggal</Label>
-          <Input id="booking_date" type="date" {...register('booking_date')} />
+          <Controller
+            control={control}
+            name="booking_date"
+            render={({ field }) => (
+              <DateInput
+                id="booking_date"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                aria-label="Tanggal"
+              />
+            )}
+          />
         </div>
       )}
 

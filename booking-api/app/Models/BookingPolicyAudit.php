@@ -15,4 +15,9 @@ class BookingPolicyAudit extends Model
         'after_json' => 'array',
         'created_at' => 'datetime',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
